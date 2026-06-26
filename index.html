@@ -2270,22 +2270,29 @@ async function submitWellness() {
   const recuperacao = parseInt(document.getElementById('w-rec').value);
   const hidratacao = wUrina;
 
-  // Check if already exists for today
-  const { data: existing } = await supa.from('monitoring').select('id').eq('athleteId', athleteId).eq('data', today).single().catch(() => ({ data: null }));
+  try {
+    // Check if already exists for today
+    const { data: existing } = await supa.from('monitoring').select('id').eq('athleteId', athleteId).eq('data', today);
 
-  if (existing) {
-    await supa.from('monitoring').update({ sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true }).eq('id', existing.id);
-  } else {
-    await supa.from('monitoring').insert({ athleteId, data: today, sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true, createdAt: new Date().toISOString() });
+    if (existing && existing.length > 0) {
+      await supa.from('monitoring').update({ sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true }).eq('id', existing[0].id);
+    } else {
+      await supa.from('monitoring').insert({ athleteId, data: today, sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true, createdAt: new Date().toISOString() });
+    }
+
+    document.getElementById('view-wellness').innerHTML = `
+      <div class="wellness-box" style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:16px;">✅</div>
+        <h2>Wellness enviado!</h2>
+        <div class="sub">Hooper Index: <strong style="color:var(--acento);">${hooper}/25</strong></div>
+        <div style="margin-top:20px;font-size:13px;color:var(--cinza-texto);">Obrigado! Não esqueça de informar a PSE após o treino.</div>
+      </div>`;
+  } catch(e) {
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = 'Enviar Wellness';
+    showToast('Erro ao enviar. Tente novamente.');
   }
-
-  document.getElementById('view-wellness').innerHTML = `
-    <div class="wellness-box" style="text-align:center;">
-      <div style="font-size:48px;margin-bottom:16px;">✅</div>
-      <h2>Wellness enviado!</h2>
-      <div class="sub">Hooper Index: <strong style="color:var(--acento);">${hooper}/25</strong></div>
-      <div style="margin-top:20px;font-size:13px;color:var(--cinza-texto);">Obrigado! Informe também a PSE após o treino.</div>
-    </div>`;
 }
 
 async function submitPse() {
@@ -2297,22 +2304,28 @@ async function submitPse() {
   const today = new Date().toISOString().split('T')[0];
   const pse = parseInt(document.getElementById('p-pse').value);
 
-  const { data: existing } = await supa.from('monitoring').select('id,pse_duracao').eq('athleteId', athleteId).eq('data', today).single().catch(() => ({ data: null }));
+  try {
+    const { data: existing } = await supa.from('monitoring').select('id,pse_duracao').eq('athleteId', athleteId).eq('data', today);
+    const carga = (existing && existing.length > 0 && existing[0].pse_duracao) ? pse * existing[0].pse_duracao : null;
 
-  const carga = existing?.pse_duracao ? pse * existing.pse_duracao : null;
+    if (existing && existing.length > 0) {
+      await supa.from('monitoring').update({ pse_intensidade: pse, pse_carga: carga, preenchido_pos: true }).eq('id', existing[0].id);
+    } else {
+      await supa.from('monitoring').insert({ athleteId, data: today, pse_intensidade: pse, preenchido_pos: true, createdAt: new Date().toISOString() });
+    }
 
-  if (existing) {
-    await supa.from('monitoring').update({ pse_intensidade: pse, pse_carga: carga, preenchido_pos: true }).eq('id', existing.id);
-  } else {
-    await supa.from('monitoring').insert({ athleteId, data: today, pse_intensidade: pse, preenchido_pos: true, createdAt: new Date().toISOString() });
+    document.getElementById('view-pse-form').innerHTML = `
+      <div class="wellness-box" style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:16px;">✅</div>
+        <h2>PSE enviada!</h2>
+        <div class="sub">Intensidade registrada: <strong style="color:var(--acento);">${pse}/10 — ${PSE_NOMES[pse]}</strong></div>
+      </div>`;
+  } catch(e) {
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = 'Enviar PSE';
+    showToast('Erro ao enviar. Tente novamente.');
   }
-
-  document.getElementById('view-pse-form').innerHTML = `
-    <div class="wellness-box" style="text-align:center;">
-      <div style="font-size:48px;margin-bottom:16px;">✅</div>
-      <h2>PSE enviada!</h2>
-      <div class="sub">Intensidade registrada: <strong style="color:var(--acento);">${pse}/10 — ${PSE_NOMES[pse]}</strong></div>
-    </div>`;
 }
 
 // ── Monitoramento (visão do fisio) ────────────────────────────
@@ -2443,22 +2456,33 @@ function copyPseLink() {
 async function checkHash() {
   const hash = window.location.hash;
   if (hash === '#wellness') {
+    // Esconde login screen, mostra wellness direto
+    document.getElementById('login-screen').classList.remove('active');
     document.getElementById('view-wellness').style.display = 'flex';
     await loadAtletasSelect('w-atleta');
     wUpdate();
+    return true;
   } else if (hash === '#pse') {
+    document.getElementById('login-screen').classList.remove('active');
     document.getElementById('view-pse-form').style.display = 'flex';
     await loadAtletasSelect('p-atleta');
     document.getElementById('p-pse').addEventListener('input', () => {
       document.getElementById('pl-pse').textContent = document.getElementById('p-pse').value;
       document.getElementById('p-pse-label').textContent = PSE_NOMES[parseInt(document.getElementById('p-pse').value)] || '';
     });
+    return true;
   }
+  return false;
 }
 window.addEventListener('hashchange', checkHash);
-checkHash();
 
-checkSession();
+// Inicialização: verifica hash primeiro, só faz login se não for wellness/pse
+(async () => {
+  const isPublicForm = await checkHash();
+  if (!isPublicForm) {
+    checkSession();
+  }
+})();
 
 </script>
 </body>
