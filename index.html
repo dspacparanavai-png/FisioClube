@@ -1022,6 +1022,22 @@ body.dark-mode #topbar {
       <div id="historico-content"></div>
     </div>
 
+    <!-- MONITORAMENTO -->
+    <div class="view" id="view-monitoramento">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <label style="font-size:13px;color:var(--cinza-texto);">Data:</label>
+          <input type="date" id="mon-data" class="form-control" style="width:180px;" onchange="renderMonitoramento()">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" onclick="copyWellnessLink()">📋 Link Wellness</button>
+          <button class="btn btn-ghost" onclick="copyPseLink()">📋 Link PSE</button>
+        </div>
+      </div>
+      <div id="mon-resumo" style="margin-bottom:20px;"></div>
+      <div id="mon-lista"></div>
+    </div>
+
   </div>
 </main>
 
@@ -1209,26 +1225,6 @@ body.dark-mode #topbar {
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-physio')">Cancelar</button>
       <button class="btn btn-primary" onclick="savePhysio()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-    <!-- MONITORAMENTO -->
-    <div class="view" id="view-monitoramento">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <label style="font-size:13px;color:var(--cinza-texto);">Data:</label>
-          <input type="date" id="mon-data" class="form-control" style="width:180px;" onchange="renderMonitoramento()">
-        </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost" onclick="copyWellnessLink()" title="Copiar link wellness">📋 Link Wellness</button>
-          <button class="btn btn-ghost" onclick="copyPseLink()" title="Copiar link PSE">📋 Link PSE</button>
-        </div>
-      </div>
-      <!-- resumo do dia -->
-      <div id="mon-resumo" style="margin-bottom:20px;"></div>
-      <!-- tabela atletas -->
-      <div id="mon-lista"></div>
     </div>
   </div>
 </div>
@@ -2254,7 +2250,7 @@ async function loadAtletasSelect(selId) {
   const sel = document.getElementById(selId);
   sel.innerHTML = '<option value="">Selecione seu nome...</option>' +
     athletes.filter(a => a.status === 'ativo')
-      .sort((a,b) => (a.apelido||a.nome).localeCompare(a.apelido||b.nome,'pt-BR'))
+      .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 }
 
@@ -2390,8 +2386,8 @@ async function renderMonitoramento() {
 
   listaEl.innerHTML = `
     <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;overflow:hidden;">
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.5fr;gap:8px;padding:10px 16px;border-bottom:1px solid var(--cinza-borda);font-size:11px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">
-        <div>Atleta</div><div>Hooper</div><div>Hidrat.</div><div>Recup.</div><div>PSE</div><div>Duração (min)</div><div>Carga (UA)</div><div>ACWR</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.5fr${currentRole==='admin'?' 0.5fr':''};gap:8px;padding:10px 16px;border-bottom:1px solid var(--cinza-borda);font-size:11px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">
+        <div>Atleta</div><div>Hooper</div><div>Hidrat.</div><div>Recup.</div><div>PSE</div><div>Duração (min)</div><div>Carga (UA)</div><div>ACWR</div>${currentRole==='admin'?'<div></div>':''}
       </div>
       ${ativos.map(a => {
         const m = monDia.find(r => r.athleteId == a.id);
@@ -2399,7 +2395,7 @@ async function renderMonitoramento() {
         const stats = calcStats(hist);
         const urinaCor = m?.hidratacao ? URINA_CORES[m.hidratacao] : null;
         return `
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.5fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--cinza-borda);align-items:center;font-size:13px;" id="row-${a.id}">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.5fr${currentRole==='admin'?' 0.5fr':''};gap:8px;padding:12px 16px;border-bottom:1px solid var(--cinza-borda);align-items:center;font-size:13px;">
             <div style="font-weight:600;">${a.apelido || a.nome}</div>
             <div>${m?.hooper ? hooперBadge(m.hooper) : '<span style="color:var(--cinza-texto);">—</span>'}</div>
             <div>${urinaCor ? `<span class="urina-dot" style="background:${urinaCor};" title="${URINA_NOMES[m.hidratacao]}"></span>` : '—'}</div>
@@ -2412,6 +2408,7 @@ async function renderMonitoramento() {
             </div>
             <div style="font-weight:700;color:var(--acento);">${m?.pse_carga ? m.pse_carga + ' UA' : '—'}</div>
             <div>${acwrBadge(stats.acwr)}</div>
+            ${currentRole==='admin' ? `<div>${m ? `<button onclick="deleteMonitoring(${m.id})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--cinza-texto);" title="Excluir registro">🗑️</button>` : ''}</div>` : ''}
           </div>`;
       }).join('')}
     </div>
@@ -2424,6 +2421,13 @@ async function renderMonitoramento() {
         <span><span class="mon-badge mon-vermelho">&gt; 1.5</span> Risco aumentado de lesão</span>
       </div>
     </div>` : ''}`;
+}
+
+async function deleteMonitoring(id) {
+  if (!confirm('Excluir este registro de monitoramento?')) return;
+  await dbDelete('monitoring', id);
+  showToast('Registro excluído.');
+  renderMonitoramento();
 }
 
 function copyWellnessLink() {
