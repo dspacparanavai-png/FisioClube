@@ -783,8 +783,46 @@ body.dark-mode #topbar {
 
   .toggle-btn.active { background: var(--cinza-borda); color: var(--branco); }
 
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
+  /* ── MONITORAMENTO ── */
+  .mon-card { background: var(--cinza-card); border: 1px solid var(--cinza-borda); border-radius: 12px; padding: 20px; margin-bottom: 12px; }
+  .mon-atleta-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr; gap: 8px; align-items: center; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--cinza-borda); background: var(--cinza-card); margin-bottom: 6px; }
+  .mon-atleta-row:hover { border-color: var(--acento); }
+  .mon-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .mon-verde { background: rgba(0,200,83,0.15); color: #00c853; }
+  .mon-amarelo { background: rgba(255,171,0,0.15); color: #ffab00; }
+  .mon-vermelho { background: rgba(224,40,46,0.15); color: var(--perigo); }
+  .mon-label { font-size: 10px; color: var(--cinza-texto); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+  .mon-val { font-size: 18px; font-weight: 700; }
+  .mon-dur-input { width: 70px; padding: 5px 8px; background: var(--cinza-fundo); border: 1px solid var(--cinza-borda); border-radius: 6px; color: var(--branco); font-size: 13px; font-family: inherit; text-align: center; }
+  .mon-dur-input:focus { outline: none; border-color: var(--acento); }
+  .urina-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-block; border: 2px solid rgba(255,255,255,0.2); vertical-align: middle; }
+
+  /* formulário wellness (sem sidebar) */
+  #view-wellness, #view-pse-form {
+    position: fixed; inset: 0; background: var(--cinza-fundo);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; overflow-y: auto; padding: 20px;
+  }
+  .wellness-box {
+    background: var(--cinza-card); border: 1px solid var(--cinza-borda);
+    border-radius: 16px; padding: 32px; width: 100%; max-width: 480px;
+  }
+  .wellness-box h2 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--acento); margin-bottom: 4px; }
+  .wellness-box .sub { font-size: 12px; color: var(--cinza-texto); margin-bottom: 24px; }
+  .slider-row { margin-bottom: 18px; }
+  .slider-row label { display: flex; justify-content: space-between; font-size: 13px; color: var(--cinza-texto); margin-bottom: 6px; }
+  .slider-row label span { color: var(--acento); font-weight: 700; font-size: 16px; }
+  .slider-row input[type=range] { width: 100%; accent-color: var(--acento); }
+  .slider-hints { display: flex; justify-content: space-between; font-size: 10px; color: var(--cinza-texto); margin-top: 2px; }
+  .urina-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .urina-btn { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; flex-shrink: 0; }
+  .urina-btn.selected { border-color: var(--branco) !important; transform: scale(1.15); }
+  .hooper-box { background: var(--cinza-fundo); border-radius: 10px; padding: 14px; text-align: center; margin: 16px 0; }
+  .hooper-box .num { font-size: 36px; font-weight: 700; color: var(--acento); }
+  .hooper-box .desc { font-size: 12px; color: var(--cinza-texto); margin-top: 4px; }
+  .send-btn { width: 100%; padding: 14px; background: var(--acento); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px; }
+  .send-btn:hover { opacity: 0.88; }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--cinza-borda); border-radius: 3px; }
 
@@ -868,6 +906,9 @@ body.dark-mode #topbar {
     </button>
     <button class="nav-item" onclick="showSection('fisios')">
       <span class="icon">🧑‍⚕️</span> Fisioterapeutas
+    </button>
+    <button class="nav-item" onclick="showSection('monitoramento')">
+      <span class="icon">📊</span> Monitoramento
     </button>
 
   </nav>
@@ -1172,6 +1213,115 @@ body.dark-mode #topbar {
   </div>
 </div>
 
+    <!-- MONITORAMENTO -->
+    <div class="view" id="view-monitoramento">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <label style="font-size:13px;color:var(--cinza-texto);">Data:</label>
+          <input type="date" id="mon-data" class="form-control" style="width:180px;" onchange="renderMonitoramento()">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" onclick="copyWellnessLink()" title="Copiar link wellness">📋 Link Wellness</button>
+          <button class="btn btn-ghost" onclick="copyPseLink()" title="Copiar link PSE">📋 Link PSE</button>
+        </div>
+      </div>
+      <!-- resumo do dia -->
+      <div id="mon-resumo" style="margin-bottom:20px;"></div>
+      <!-- tabela atletas -->
+      <div id="mon-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- WELLNESS FORM (acesso sem login) -->
+<div id="view-wellness" style="display:none;">
+  <div class="wellness-box">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:28px;">🧠</div>
+      <h2>Wellness Pré-Treino</h2>
+      <div class="sub">AC Paranavaí — Fisioterapia</div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--cinza-texto);">Seu nome</label>
+      <select class="form-control" id="w-atleta" style="margin-top:4px;"></select>
+    </div>
+    <div class="slider-row">
+      <label>Qualidade do Sono <span id="wl-sono">3</span></label>
+      <input type="range" min="1" max="5" value="3" id="w-sono" oninput="wUpdate()">
+      <div class="slider-hints"><span>Muito ruim</span><span>Muito bom</span></div>
+    </div>
+    <div class="slider-row">
+      <label>Dor Muscular Geral <span id="wl-dor">3</span></label>
+      <input type="range" min="1" max="5" value="3" id="w-dor" oninput="wUpdate()">
+      <div class="slider-hints"><span>Muito ruim</span><span>Muito bom</span></div>
+    </div>
+    <div class="slider-row">
+      <label>Fadiga <span id="wl-fadiga">3</span></label>
+      <input type="range" min="1" max="5" value="3" id="w-fadiga" oninput="wUpdate()">
+      <div class="slider-hints"><span>Muito ruim</span><span>Muito bom</span></div>
+    </div>
+    <div class="slider-row">
+      <label>Humor <span id="wl-humor">3</span></label>
+      <input type="range" min="1" max="5" value="3" id="w-humor" oninput="wUpdate()">
+      <div class="slider-hints"><span>Muito ruim</span><span>Muito bom</span></div>
+    </div>
+    <div class="slider-row">
+      <label>Nível de Estresse <span id="wl-estresse">3</span></label>
+      <input type="range" min="1" max="5" value="3" id="w-estresse" oninput="wUpdate()">
+      <div class="slider-hints"><span>Muito ruim</span><span>Muito bom</span></div>
+    </div>
+    <div class="hooper-box">
+      <div class="num" id="w-hooper-num">15</div>
+      <div class="desc" id="w-hooper-desc">Hooper Index — Prontidão Moderada</div>
+    </div>
+    <div class="slider-row">
+      <label>Como você se sente hoje? (Recuperação) <span id="wl-rec">5</span></label>
+      <input type="range" min="1" max="10" value="5" id="w-rec" oninput="document.getElementById('wl-rec').textContent=this.value">
+      <div class="slider-hints"><span>Muito mal</span><span>Muito bem</span></div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:8px;">💧 Cor da Urina (Hidratação)</div>
+      <div class="urina-row" id="w-urina-row">
+        <div class="urina-btn" style="background:#FFF9C4;" data-n="1" onclick="wSelectUrina(1)" title="Bem hidratado"></div>
+        <div class="urina-btn" style="background:#FFF176;" data-n="2" onclick="wSelectUrina(2)" title="Hidratado"></div>
+        <div class="urina-btn" style="background:#FFEE58;" data-n="3" onclick="wSelectUrina(3)" title="Levemente desidratado"></div>
+        <div class="urina-btn" style="background:#FDD835;" data-n="4" onclick="wSelectUrina(4)" title="Desidratado"></div>
+        <div class="urina-btn" style="background:#F9A825;" data-n="5" onclick="wSelectUrina(5)" title="Muito desidratado"></div>
+        <div class="urina-btn" style="background:#E65100;" data-n="6" onclick="wSelectUrina(6)" title="Severamente desidratado"></div>
+        <div class="urina-btn" style="background:#4E342E;" data-n="7" onclick="wSelectUrina(7)" title="Risco à saúde"></div>
+      </div>
+      <div id="w-urina-label" style="font-size:11px;color:var(--cinza-texto);margin-top:4px;">Selecione a cor</div>
+      <input type="hidden" id="w-hidratacao" value="0">
+    </div>
+    <button class="send-btn" onclick="submitWellness()" id="w-btn-send">Enviar Wellness</button>
+  </div>
+</div>
+
+<!-- PSE FORM (acesso sem login) -->
+<div id="view-pse-form" style="display:none;">
+  <div class="wellness-box">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:28px;">⚡</div>
+      <h2>PSE Pós-Treino</h2>
+      <div class="sub">AC Paranavaí — Fisioterapia</div>
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label style="font-size:12px;color:var(--cinza-texto);">Seu nome</label>
+      <select class="form-control" id="p-atleta" style="margin-top:4px;"></select>
+    </div>
+    <div class="slider-row">
+      <label>Como foi a intensidade do treino? <span id="pl-pse">5</span></label>
+      <input type="range" min="1" max="10" value="5" id="p-pse" oninput="document.getElementById('pl-pse').textContent=this.value">
+      <div class="slider-hints"><span>1 — Muito leve</span><span>10 — Máximo</span></div>
+    </div>
+    <div style="background:var(--cinza-fundo);border-radius:10px;padding:16px;margin:16px 0;text-align:center;">
+      <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:4px;">Sua avaliação</div>
+      <div id="p-pse-label" style="font-size:18px;font-weight:700;color:var(--acento);">Moderado</div>
+    </div>
+    <button class="send-btn" onclick="submitPse()" id="p-btn-send">Enviar PSE</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -1318,7 +1468,7 @@ function showSection(section) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
 
   const navMap = {
-    dashboard: 0, atletas: 1, hoje: 2, historico: 3, fisios: 4
+    dashboard: 0, atletas: 1, hoje: 2, historico: 3, fisios: 4, monitoramento: 5
   };
 
   document.querySelectorAll('.nav-item')[navMap[section] ?? 0].classList.add('active');
@@ -1329,7 +1479,8 @@ function showSection(section) {
     atletas: 'Atletas',
     hoje: 'Atendimentos Hoje',
     historico: 'Histórico Geral',
-    fisios: 'Fisioterapeutas'
+    fisios: 'Fisioterapeutas',
+    monitoramento: 'Monitoramento'
   };
 
   document.getElementById('topbar-title').textContent = titleMap[section] || section;
@@ -1343,6 +1494,7 @@ function showSection(section) {
   if (section === 'hoje') renderHoje();
   if (section === 'historico') renderHistorico();
   if (section === 'fisios') renderFisios();
+  if (section === 'monitoramento') renderMonitoramento();
 }
 
 // -- DASHBOARD ---------------------------------------------------------
@@ -2068,6 +2220,239 @@ window.addEventListener('scroll', () => {
     topbar.classList.remove('scrolled');
   }
 });
+
+// ══════════════════════════════════════════════════════════════
+// -- MONITORAMENTO --------------------------------------------
+// ══════════════════════════════════════════════════════════════
+
+const URINA_CORES  = ['','#FFF9C4','#FFF176','#FFEE58','#FDD835','#F9A825','#E65100','#4E342E'];
+const URINA_NOMES  = ['','Bem hidratado','Hidratado','Levemente desidratado','Desidratado','Muito desidratado','Severamente desidratado','Risco à saúde'];
+const PSE_NOMES    = ['','Repouso','Muito leve','Leve','Moderado','Moderado+','Difícil','Muito difícil','Muito difícil+','Intenso','Máximo'];
+
+let wUrina = 0;
+
+// ── Wellness form ─────────────────────────────────────────────
+function wUpdate() {
+  const fields = ['sono','dor','fadiga','humor','estresse'];
+  fields.forEach(f => document.getElementById('wl-'+f).textContent = document.getElementById('w-'+f).value);
+  const total = fields.reduce((s,f) => s + parseInt(document.getElementById('w-'+f).value), 0);
+  document.getElementById('w-hooper-num').textContent = total;
+  const desc = total >= 18 ? '🟢 Alta prontidão' : total >= 11 ? '🟡 Prontidão moderada' : '🔴 Baixa prontidão — atenção!';
+  document.getElementById('w-hooper-desc').textContent = 'Hooper Index — ' + desc;
+  document.getElementById('p-pse-label').textContent = PSE_NOMES[parseInt(document.getElementById('p-pse')?.value||5)] || '';
+}
+
+function wSelectUrina(n) {
+  wUrina = n;
+  document.getElementById('w-hidratacao').value = n;
+  document.querySelectorAll('.urina-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.n) === n));
+  document.getElementById('w-urina-label').textContent = URINA_NOMES[n] || '';
+}
+
+async function loadAtletasSelect(selId) {
+  const athletes = await dbGetAll('athletes');
+  const sel = document.getElementById(selId);
+  sel.innerHTML = '<option value="">Selecione seu nome...</option>' +
+    athletes.filter(a => a.status === 'ativo')
+      .sort((a,b) => (a.apelido||a.nome).localeCompare(a.apelido||b.nome,'pt-BR'))
+      .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
+}
+
+async function submitWellness() {
+  const athleteId = parseInt(document.getElementById('w-atleta').value);
+  if (!athleteId) { showToast('Selecione seu nome!'); return; }
+  const btn = document.getElementById('w-btn-send');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  const today = new Date().toISOString().split('T')[0];
+  const sono = parseInt(document.getElementById('w-sono').value);
+  const dor = parseInt(document.getElementById('w-dor').value);
+  const fadiga = parseInt(document.getElementById('w-fadiga').value);
+  const humor = parseInt(document.getElementById('w-humor').value);
+  const estresse = parseInt(document.getElementById('w-estresse').value);
+  const hooper = sono + dor + fadiga + humor + estresse;
+  const recuperacao = parseInt(document.getElementById('w-rec').value);
+  const hidratacao = wUrina;
+
+  // Check if already exists for today
+  const { data: existing } = await supa.from('monitoring').select('id').eq('athleteId', athleteId).eq('data', today).single().catch(() => ({ data: null }));
+
+  if (existing) {
+    await supa.from('monitoring').update({ sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true }).eq('id', existing.id);
+  } else {
+    await supa.from('monitoring').insert({ athleteId, data: today, sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true, createdAt: new Date().toISOString() });
+  }
+
+  document.getElementById('view-wellness').innerHTML = `
+    <div class="wellness-box" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">✅</div>
+      <h2>Wellness enviado!</h2>
+      <div class="sub">Hooper Index: <strong style="color:var(--acento);">${hooper}/25</strong></div>
+      <div style="margin-top:20px;font-size:13px;color:var(--cinza-texto);">Obrigado! Informe também a PSE após o treino.</div>
+    </div>`;
+}
+
+async function submitPse() {
+  const athleteId = parseInt(document.getElementById('p-atleta').value);
+  if (!athleteId) { showToast('Selecione seu nome!'); return; }
+  const btn = document.getElementById('p-btn-send');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  const today = new Date().toISOString().split('T')[0];
+  const pse = parseInt(document.getElementById('p-pse').value);
+
+  const { data: existing } = await supa.from('monitoring').select('id,pse_duracao').eq('athleteId', athleteId).eq('data', today).single().catch(() => ({ data: null }));
+
+  const carga = existing?.pse_duracao ? pse * existing.pse_duracao : null;
+
+  if (existing) {
+    await supa.from('monitoring').update({ pse_intensidade: pse, pse_carga: carga, preenchido_pos: true }).eq('id', existing.id);
+  } else {
+    await supa.from('monitoring').insert({ athleteId, data: today, pse_intensidade: pse, preenchido_pos: true, createdAt: new Date().toISOString() });
+  }
+
+  document.getElementById('view-pse-form').innerHTML = `
+    <div class="wellness-box" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">✅</div>
+      <h2>PSE enviada!</h2>
+      <div class="sub">Intensidade registrada: <strong style="color:var(--acento);">${pse}/10 — ${PSE_NOMES[pse]}</strong></div>
+    </div>`;
+}
+
+// ── Monitoramento (visão do fisio) ────────────────────────────
+function calcStats(registros) {
+  // Ordenados por data desc
+  const sorted = [...registros].sort((a,b) => b.data.localeCompare(a.data));
+  const cargas7 = sorted.slice(0,7).map(r => r.pse_carga || 0);
+  const cargas28 = sorted.slice(0,28).map(r => r.pse_carga || 0);
+
+  const sum7 = cargas7.reduce((s,v) => s+v, 0);
+  const sum28 = cargas28.reduce((s,v) => s+v, 0);
+  const media7 = cargas7.length ? sum7 / cargas7.length : 0;
+  const media28 = cargas28.length ? sum28 / cargas28.length : 0;
+
+  // Monotonia
+  const mean = cargas7.length ? cargas7.reduce((s,v)=>s+v,0)/cargas7.length : 0;
+  const dp = cargas7.length > 1 ? Math.sqrt(cargas7.reduce((s,v)=>s+(v-mean)**2,0)/cargas7.length) : 0;
+  const monotonia = dp > 0 ? mean / dp : 0;
+  const strain = sum7 * monotonia;
+  const acwr = media28 > 0 ? media7 / media28 : null;
+
+  return { cargaSemana: sum7, monotonia, strain, acwr };
+}
+
+function acwrBadge(acwr) {
+  if (acwr === null) return '<span class="mon-badge" style="background:rgba(138,144,158,0.15);color:var(--cinza-texto);">—</span>';
+  if (acwr >= 0.8 && acwr <= 1.3) return `<span class="mon-badge mon-verde">✅ ${acwr.toFixed(2)}</span>`;
+  if (acwr > 1.3 && acwr <= 1.5) return `<span class="mon-badge mon-amarelo">⚠️ ${acwr.toFixed(2)}</span>`;
+  return `<span class="mon-badge mon-vermelho">🔴 ${acwr.toFixed(2)}</span>`;
+}
+
+function hooперBadge(h) {
+  if (!h) return '—';
+  const cl = h >= 18 ? 'mon-verde' : h >= 11 ? 'mon-amarelo' : 'mon-vermelho';
+  return `<span class="mon-badge ${cl}">${h}</span>`;
+}
+
+async function saveDuracao(monId, dur, pse) {
+  const carga = pse && dur ? pse * dur : null;
+  await supa.from('monitoring').update({ pse_duracao: dur, pse_carga: carga }).eq('id', monId);
+  showToast('Duração salva!');
+  renderMonitoramento();
+}
+
+async function renderMonitoramento() {
+  const dateEl = document.getElementById('mon-data');
+  if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+  const data = dateEl.value;
+
+  const [athletes, allMon] = await Promise.all([dbGetAll('athletes'), dbGetAll('monitoring')]);
+  const monDia = allMon.filter(m => m.data === data);
+  const atletaMap = {};
+  athletes.forEach(a => atletaMap[a.id] = a);
+
+  const resumoEl = document.getElementById('mon-resumo');
+  const listaEl = document.getElementById('mon-lista');
+
+  const preencheram = monDia.filter(m => m.preenchido_pre).length;
+  const total = athletes.filter(a => a.status === 'ativo').length;
+  const alertas = monDia.filter(m => m.hooper && m.hooper < 11).length;
+
+  resumoEl.innerHTML = `
+    <div class="stats-grid" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-label">Wellness recebidos</div><div class="stat-value" style="color:${preencheram===total?'#00c853':'var(--acento)'};">${preencheram}<span style="font-size:14px">/${total}</span></div></div>
+      <div class="stat-card"><div class="stat-label">Alertas Hooper</div><div class="stat-value" style="color:${alertas>0?'var(--perigo)':'#00c853'}">${alertas}</div></div>
+      <div class="stat-card"><div class="stat-label">Hidratação crítica</div><div class="stat-value" style="color:${monDia.filter(m=>m.hidratacao>=5).length>0?'var(--perigo)':'#00c853'}">${monDia.filter(m=>m.hidratacao>=5).length}</div></div>
+      <div class="stat-card"><div class="stat-label">PSE recebidos</div><div class="stat-value">${monDia.filter(m=>m.preenchido_pos).length}</div></div>
+    </div>`;
+
+  const ativos = athletes.filter(a => a.status === 'ativo').sort((a,b)=>(a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'));
+
+  listaEl.innerHTML = `
+    <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;overflow:hidden;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.5fr;gap:8px;padding:10px 16px;border-bottom:1px solid var(--cinza-borda);font-size:11px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">
+        <div>Atleta</div><div>Hooper</div><div>Hidrat.</div><div>Recup.</div><div>PSE</div><div>Duração (min)</div><div>Carga (UA)</div><div>ACWR</div>
+      </div>
+      ${ativos.map(a => {
+        const m = monDia.find(r => r.athleteId == a.id);
+        const hist = allMon.filter(r => r.athleteId == a.id);
+        const stats = calcStats(hist);
+        const urinaCor = m?.hidratacao ? URINA_CORES[m.hidratacao] : null;
+        return `
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.5fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--cinza-borda);align-items:center;font-size:13px;" id="row-${a.id}">
+            <div style="font-weight:600;">${a.apelido || a.nome}</div>
+            <div>${m?.hooper ? hooперBadge(m.hooper) : '<span style="color:var(--cinza-texto);">—</span>'}</div>
+            <div>${urinaCor ? `<span class="urina-dot" style="background:${urinaCor};" title="${URINA_NOMES[m.hidratacao]}"></span>` : '—'}</div>
+            <div>${m?.recuperacao ?? '—'}</div>
+            <div>${m?.pse_intensidade ?? '—'}</div>
+            <div>
+              ${m ? `<input class="mon-dur-input" type="number" min="1" max="300" placeholder="min"
+                value="${m.pse_duracao || ''}"
+                onchange="saveDuracao(${m.id}, parseInt(this.value)||0, ${m.pse_intensidade||0})">` : '—'}
+            </div>
+            <div style="font-weight:700;color:var(--acento);">${m?.pse_carga ? m.pse_carga + ' UA' : '—'}</div>
+            <div>${acwrBadge(stats.acwr)}</div>
+          </div>`;
+      }).join('')}
+    </div>
+    ${ativos.length > 0 ? `
+    <div style="margin-top:20px;background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;padding:20px;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:16px;">Referências ACWR (Gabbett, 2016)</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;">
+        <span><span class="mon-badge mon-verde">0.8 – 1.3</span> Zona segura</span>
+        <span><span class="mon-badge mon-amarelo">1.3 – 1.5</span> Atenção</span>
+        <span><span class="mon-badge mon-vermelho">&gt; 1.5</span> Risco aumentado de lesão</span>
+      </div>
+    </div>` : ''}`;
+}
+
+function copyWellnessLink() {
+  const url = window.location.href.split('#')[0] + '#wellness';
+  navigator.clipboard.writeText(url).then(() => showToast('Link Wellness copiado!'));
+}
+function copyPseLink() {
+  const url = window.location.href.split('#')[0] + '#pse';
+  navigator.clipboard.writeText(url).then(() => showToast('Link PSE copiado!'));
+}
+
+// ── Roteamento por hash (para links do atleta) ────────────────
+async function checkHash() {
+  const hash = window.location.hash;
+  if (hash === '#wellness') {
+    document.getElementById('view-wellness').style.display = 'flex';
+    await loadAtletasSelect('w-atleta');
+    wUpdate();
+  } else if (hash === '#pse') {
+    document.getElementById('view-pse-form').style.display = 'flex';
+    await loadAtletasSelect('p-atleta');
+    document.getElementById('p-pse').addEventListener('input', () => {
+      document.getElementById('pl-pse').textContent = document.getElementById('p-pse').value;
+      document.getElementById('p-pse-label').textContent = PSE_NOMES[parseInt(document.getElementById('p-pse').value)] || '';
+    });
+  }
+}
+window.addEventListener('hashchange', checkHash);
+checkHash();
 
 checkSession();
 
