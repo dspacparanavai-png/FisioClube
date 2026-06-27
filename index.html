@@ -2286,6 +2286,7 @@ async function submitWellness() {
         <h2>Wellness enviado!</h2>
         <div class="sub">Hooper Index: <strong style="color:var(--acento);">${hooper}/25</strong></div>
         <div style="margin-top:20px;font-size:13px;color:var(--cinza-texto);">Obrigado! Não esqueça de informar a PSE após o treino.</div>
+        <button onclick="location.reload()" class="send-btn" style="margin-top:24px;background:var(--cinza-card);border:1px solid var(--cinza-borda);color:var(--branco);">+ Próximo atleta</button>
       </div>`;
   } catch(e) {
     console.error(e);
@@ -2319,6 +2320,7 @@ async function submitPse() {
         <div style="font-size:48px;margin-bottom:16px;">✅</div>
         <h2>PSE enviada!</h2>
         <div class="sub">Intensidade registrada: <strong style="color:var(--acento);">${pse}/10 — ${PSE_NOMES[pse]}</strong></div>
+        <button onclick="location.reload()" class="send-btn" style="margin-top:24px;background:var(--cinza-card);border:1px solid var(--cinza-borda);color:var(--branco);">+ Próximo atleta</button>
       </div>`;
   } catch(e) {
     console.error(e);
