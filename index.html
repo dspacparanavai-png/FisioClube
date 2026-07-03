@@ -2742,7 +2742,7 @@ window.addEventListener('hashchange', checkHash);
   const isPublicForm = await checkHash();
   if (!isPublicForm) {
     // ── EXPORTAR PDF DO ATLETA ────────────────────────────────────
-async function exportAthletePDF(athleteId) {
+window.exportAthletePDF = async function(athleteId) {
   showToast('📄 Gerando PDF...');
 
   const a = await dbGet('athletes', athleteId);
