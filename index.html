@@ -1852,8 +1852,8 @@ async function openAthleteDetail(id) {
         ${a.foto ? `<img src="${a.foto}">` : '⚽'}
       </div>
       <div class="detail-info">
-        <h2>${a.nome}</h2>
-        ${a.apelido ? `<p style="color:var(--cinza-texto);font-size:15px;">"${a.apelido}"</p>` : ''}
+        <h2>${escapeHtml(a.nome)}</h2>
+        ${a.apelido ? `<p style="color:var(--cinza-texto);font-size:15px;">"${escapeHtml(a.apelido)}"</p>` : ''}
         <span class="badge badge-${a.status}" style="margin-top:8px;">${statusLabel(a.status)}</span>
         <div class="detail-meta">
           ${a.numero ? `<div class="meta-item"><span>Camisa</span>#${a.numero}</div>` : ''}
@@ -1865,8 +1865,8 @@ async function openAthleteDetail(id) {
           ${a.altura ? `<div class="meta-item"><span>Altura</span>${a.altura} m</div>` : ''}
           ${a.imc ? `<div class="meta-item"><span>IMC</span>${a.imc}</div>` : ''}
         </div>
-        ${a.diagnostico ? `<div style="margin-top:14px;padding:12px;background:rgba(255,179,0,0.08);border:1px solid rgba(255,179,0,0.2);border-radius:8px;font-size:13px;"><span style="color:var(--amarelo);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Diagnóstico</span><br>${a.diagnostico}</div>` : ''}
-        ${a.obs ? `<div style="margin-top:10px;padding:12px;background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:8px;font-size:13px;color:var(--cinza-texto);">${a.obs}</div>` : ''}
+        ${a.diagnostico ? `<div style="margin-top:14px;padding:12px;background:rgba(255,179,0,0.08);border:1px solid rgba(255,179,0,0.2);border-radius:8px;font-size:13px;"><span style="color:var(--amarelo);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Diagnóstico</span><br>${escapeHtml(a.diagnostico)}</div>` : ''}
+        ${a.obs ? `<div style="margin-top:10px;padding:12px;background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:8px;font-size:13px;color:var(--cinza-texto);">${escapeHtml(a.obs)}</div>` : ''}
         <div class="detail-actions">
           <button class="btn btn-primary" onclick="openSessionModal(${a.id})">+ Registrar Atendimento</button>
           <button class="btn btn-ghost btn-sm" onclick="openAthleteModal(${a.id})">✏️ Editar</button>
@@ -1889,7 +1889,7 @@ async function openAthleteDetail(id) {
         : sessions.map(s => `
             <div class="session-entry" id="session-${s.id}">
               <div class="session-date">📅 ${formatDate(s.data)} — ${s.data}</div>
-              ${s.physioNome ? `<div style="margin-bottom:8px;"><span class="badge" style="background:#ff3d3d;color:#fff;">👨‍⚕️ ${s.physioNome}</span></div>` : ''}
+              ${s.physioNome ? `<div style="margin-bottom:8px;"><span class="badge" style="background:#ff3d3d;color:#fff;">👨‍⚕️ ${escapeHtml(s.physioNome)}</span></div>` : ''}
               ${s.evolucao ? `
                 <div class="session-field">
                   <div class="session-field-label">Evolução Clínica</div>
@@ -2031,6 +2031,11 @@ async function saveAthlete() {
   const nome = document.getElementById('f-nome').value.trim();
   if (!nome) { showToast('Nome é obrigatório!'); return; }
 
+  const saveBtn = document.querySelector('#modal-atleta .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
+
+  const resetBtn = () => { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Salvar'; } };
+
   sbStatus('syn', '🔄 Salvando atleta...');
 
   // Upload foto se houver arquivo novo selecionado
@@ -2073,6 +2078,7 @@ async function saveAthlete() {
   }
 
   currentPhotoFile = null;
+  resetBtn();
   closeModal('modal-atleta');
   renderDashboard();
   if (currentSection === 'atletas') renderAtletas();
@@ -2104,34 +2110,41 @@ async function saveSession() {
   if (!data) { showToast('Selecione a data!'); return; }
   if (!procedimentos && !evolucao) { showToast('Preencha ao menos um campo!'); return; }
 
-  const physioId = document.getElementById('a-physio')?.value || '';
-  let physioNome = '';
-  if (physioId) {
-    const p = await dbGet('physios', Number(physioId));
-    if (p) physioNome = p.nome;
+  const saveBtn = document.querySelector('#modal-atendimento .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
+
+  try {
+    const physioId = document.getElementById('a-physio')?.value || '';
+    let physioNome = '';
+    if (physioId) {
+      const p = await dbGet('physios', Number(physioId));
+      if (p) physioNome = p.nome;
+    }
+
+    await dbAdd('sessions', {
+      physioId, physioNome,
+      athleteId: currentAthleteId,
+      data, procedimentos, evolucao,
+      createdAt: new Date().toISOString()
+    });
+
+    const newStatus = document.getElementById('a-status').value;
+    if (newStatus) {
+      const a = await dbGet('athletes', currentAthleteId);
+      a.status = newStatus;
+      await dbPut('athletes', a);
+    }
+
+    closeModal('modal-atendimento');
+    showToast('Atendimento registrado!');
+    await openAthleteDetail(currentAthleteId);
+    renderDashboard();
+  } catch(e) {
+    console.error(e);
+    showToast('Erro ao salvar. Tente novamente.');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Salvar Atendimento'; }
   }
-
-  await dbAdd('sessions', {
-    physioId,
-    physioNome,
-    athleteId: currentAthleteId,
-    data,
-    procedimentos,
-    evolucao,
-    createdAt: new Date().toISOString()
-  });
-
-  const newStatus = document.getElementById('a-status').value;
-  if (newStatus) {
-    const a = await dbGet('athletes', currentAthleteId);
-    a.status = newStatus;
-    await dbPut('athletes', a);
-  }
-
-  closeModal('modal-atendimento');
-  showToast('Atendimento registrado!');
-  await openAthleteDetail(currentAthleteId);
-  renderDashboard();
 }
 
 function openEditSession(id, data, procedimentos, evolucao) {
@@ -2302,10 +2315,16 @@ function openPhysioModal(){
 async function savePhysio(){
   const nome = document.getElementById('p-nome').value.trim();
   if(!nome) return;
-  await dbAdd('physios',{nome});
-  closeModal('modal-physio');
-  renderFisios();
-  loadPhysiosSelect();
+  const btn = document.querySelector('#modal-physio .btn-primary');
+  if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+  try {
+    await dbAdd('physios',{nome});
+    closeModal('modal-physio');
+    renderFisios();
+    loadPhysiosSelect();
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Salvar'; }
+  }
 }
 
 async function deletePhysio(id){
@@ -2766,9 +2785,9 @@ window.exportAthletePDF = async function(athleteId) {
       <div style="margin-bottom:18px;padding:14px;border:1px solid #e0e0e0;border-left:4px solid #e0282e;border-radius:6px;">
         <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
           📅 ${formatDate(s.data)} — ${s.data}
-          ${s.physioNome ? `&nbsp;|&nbsp; 👨‍⚕️ ${s.physioNome}` : ''}
+          ${s.physioNome ? `&nbsp;|&nbsp; 👨‍⚕️ ${escapeHtml(s.physioNome)}` : ''}
         </div>
-        ${s.evolucao ? `<div style="font-size:13px;line-height:1.6;color:#333;">${s.evolucao}</div>` : ''}
+        ${s.evolucao ? `<div style="font-size:13px;line-height:1.6;color:#333;">${escapeHtml(s.evolucao)}</div>` : ''}
       </div>`).join('');
 
   const monHTML = monRegistros.length === 0
@@ -2845,8 +2864,8 @@ window.exportAthletePDF = async function(athleteId) {
     <div class="info-item"><div class="info-label">Nascimento</div><div class="info-value">${nascimento} (${idade})</div></div>
     <div class="info-item"><div class="info-label">Peso / Altura / IMC</div><div class="info-value">${a.peso||'—'} kg / ${a.altura||'—'} m / ${a.imc||'—'}</div></div>
     <div class="info-item"><div class="info-label">Categoria / Status</div><div class="info-value">${a.categoria||'Profissional'} — ${a.status||'—'}</div></div>
-    ${a.diagnostico ? `<div class="info-item" style="grid-column:1/-1;"><div class="info-label">Diagnóstico / Lesão atual</div><div class="info-value" style="color:#c17900;">${a.diagnostico}</div></div>` : ''}
-    ${a.obs ? `<div class="info-item" style="grid-column:1/-1;"><div class="info-label">Observações gerais</div><div class="info-value" style="font-weight:400;color:#555;">${a.obs}</div></div>` : ''}
+    ${a.diagnostico ? `<div class="info-item" style="grid-column:1/-1;"><div class="info-label">Diagnóstico / Lesão atual</div><div class="info-value" style="color:#c17900;">${escapeHtml(a.diagnostico)}</div></div>` : ''}
+    ${a.obs ? `<div class="info-item" style="grid-column:1/-1;"><div class="info-label">Observações gerais</div><div class="info-value" style="font-weight:400;color:#555;">${escapeHtml(a.obs)}</div></div>` : ''}
   </div>
 
   <div class="section-title">Prontuário Clínico (${sessions.length} atendimentos)</div>
