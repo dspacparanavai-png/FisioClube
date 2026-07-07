@@ -1476,10 +1476,25 @@ body.dark-mode #topbar {
 
 <div class="modal-overlay" id="modal-physio">
   <div class="modal">
-    <h3>Novo Fisioterapeuta</h3>
+    <h3 id="modal-physio-title">Novo Fisioterapeuta</h3>
     <div class="form-group">
-      <label>Nome</label>
-      <input class="form-control" id="p-nome">
+      <label>Nome completo</label>
+      <input class="form-control" id="p-nome" placeholder="Nome do profissional">
+    </div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select class="form-control" id="p-tipo" onchange="pTipoChange()">
+        <option value="profissional">Fisioterapeuta Profissional</option>
+        <option value="estagiario">Estagiário</option>
+      </select>
+    </div>
+    <div class="form-group" id="p-crefito-group">
+      <label>CREFITO-8</label>
+      <input class="form-control" id="p-crefito" placeholder="Ex: 12345-F">
+    </div>
+    <div class="form-group" id="p-ra-group" style="display:none;">
+      <label>RA (Registro Acadêmico)</label>
+      <input class="form-control" id="p-ra" placeholder="Ex: 2021001234">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-physio')">Cancelar</button>
@@ -2658,26 +2673,55 @@ async function renderFisios(){
   const fisios = await dbGetAll('physios');
   const el = document.getElementById('fisios-list');
   if(!el) return;
-  el.innerHTML = fisios.map(f => `
-    <div class="session-entry">
-      ${f.nome}
-      <button class="btn btn-danger btn-sm" onclick="deletePhysio(${f.id})">Excluir</button>
-    </div>
-  `).join('');
+  if(!fisios.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">🧑‍⚕️</div><h3>Nenhum profissional cadastrado</h3></div>`;
+    return;
+  }
+  el.innerHTML = fisios.map(f => {
+    const tipo = f.tipo === 'estagiario' ? 'Estagiário' : 'Fisioterapeuta';
+    const registro = f.tipo === 'estagiario'
+      ? (f.ra ? `RA: ${f.ra}` : '')
+      : (f.crefito ? `CREFITO-8: ${f.crefito}` : '');
+    const badge = f.tipo === 'estagiario'
+      ? `<span style="background:rgba(96,165,250,0.15);color:#60A5FA;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">Estagiário</span>`
+      : `<span style="background:rgba(0,200,83,0.15);color:#00c853;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">Profissional</span>`;
+    return `
+      <div class="session-entry" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">${escapeHtml(f.nome)} ${badge}</div>
+          ${registro ? `<div style="font-size:12px;color:var(--cinza-texto);margin-top:2px;">${registro}</div>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deletePhysio(${f.id})">Excluir</button>
+      </div>`;
+  }).join('');
+}
+
+function pTipoChange() {
+  const tipo = document.getElementById('p-tipo').value;
+  document.getElementById('p-crefito-group').style.display = tipo === 'profissional' ? 'block' : 'none';
+  document.getElementById('p-ra-group').style.display = tipo === 'estagiario' ? 'block' : 'none';
 }
 
 function openPhysioModal(){
-  document.getElementById('p-nome').value='';
+  document.getElementById('p-nome').value = '';
+  document.getElementById('p-tipo').value = 'profissional';
+  document.getElementById('p-crefito').value = '';
+  document.getElementById('p-ra').value = '';
+  document.getElementById('p-crefito-group').style.display = 'block';
+  document.getElementById('p-ra-group').style.display = 'none';
   openModal('modal-physio');
 }
 
 async function savePhysio(){
   const nome = document.getElementById('p-nome').value.trim();
-  if(!nome) return;
+  if(!nome) { showToast('Nome é obrigatório!'); return; }
+  const tipo = document.getElementById('p-tipo').value;
+  const crefito = document.getElementById('p-crefito').value.trim();
+  const ra = document.getElementById('p-ra').value.trim();
   const btn = document.querySelector('#modal-physio .btn-primary');
   if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
   try {
-    await dbAdd('physios',{nome});
+    await dbAdd('physios', { nome, tipo, crefito: crefito||null, ra: ra||null });
     closeModal('modal-physio');
     renderFisios();
     loadPhysiosSelect();
@@ -2698,7 +2742,10 @@ async function loadPhysiosSelect(){
   const sel = document.getElementById('a-physio');
   if(!sel) return;
   sel.innerHTML = '<option value="">Selecione...</option>' +
-    fisios.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('');
+    fisios.map(f => {
+      const label = f.tipo === 'estagiario' ? `${f.nome} (Est.)` : f.nome;
+      return `<option value="${f.id}">${label}</option>`;
+    }).join('');
 }
 
 const _openSessionModal = openSessionModal;
