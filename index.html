@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#E0282E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FisioClube">
 <title>Atlético Clube Paranavaí — Saúde e Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -911,19 +915,23 @@ body.dark-mode #topbar {
     <button class="nav-item" onclick="showSection('historico')">
       <span class="icon">📋</span> Histórico Geral
     </button>
-    <button class="nav-item" onclick="showSection('fisios')">
-      <span class="icon">🧑‍⚕️</span> Fisioterapeutas
-    </button>
     <button class="nav-item" onclick="showSection('monitoramento')">
       <span class="icon">📊</span> Monitoramento
     </button>
     <button class="nav-item" onclick="showSection('avaliacao')">
       <span class="icon">🏃</span> Aval. Funcional
     </button>
+    <button class="nav-item" onclick="showSection('evolucao')">
+      <span class="icon">📈</span> Evolução
+    </button>
+    <button class="nav-item" onclick="showSection('fisios')">
+      <span class="icon">🧑‍⚕️</span> Fisioterapeutas
+    </button>
 
   </nav>
   <div style="padding:12px 16px;border-top:1px solid var(--cinza-borda);margin-top:auto;">
     <div id="user-info" style="font-size:11px;color:var(--cinza-texto);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+    <button id="pwa-install-btn" onclick="installPWA()" style="display:none;width:100%;background:none;border:1px solid var(--cinza-borda);border-radius:8px;padding:7px;color:var(--cinza-texto);font-size:12px;font-family:inherit;cursor:pointer;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.borderColor='#00c853';this.style.color='#00c853'" onmouseout="this.style.borderColor='var(--cinza-borda)';this.style.color='var(--cinza-texto)'">📱 Instalar App</button>
     <button onclick="doLogout()" style="width:100%;background:none;border:1px solid var(--cinza-borda);border-radius:8px;padding:7px;color:var(--cinza-texto);font-size:12px;font-family:inherit;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--perigo)';this.style.color='var(--perigo)'" onmouseout="this.style.borderColor='var(--cinza-borda)';this.style.color='var(--cinza-texto)'">🚪 Sair</button>
   </div>
   <div class="sidebar-footer" id="date-display"></div>
@@ -989,6 +997,8 @@ body.dark-mode #topbar {
         <div id="today-list"></div>
       </div>
 
+      <div id="dashboard-alertas" style="margin-top:20px;"></div>
+
       
     </div>
 
@@ -1034,6 +1044,14 @@ body.dark-mode #topbar {
 
 <!-- HISTORICO -->
     <div class="view" id="view-historico">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <select id="hist-filtro-atleta" class="form-control" style="width:220px;" onchange="renderHistorico()">
+          <option value="">Todos os atletas</option>
+        </select>
+        <input type="date" id="hist-filtro-data-ini" class="form-control" style="width:160px;" onchange="renderHistorico()" placeholder="Data inicial">
+        <input type="date" id="hist-filtro-data-fim" class="form-control" style="width:160px;" onchange="renderHistorico()" placeholder="Data final">
+        <button class="btn btn-ghost" onclick="document.getElementById('hist-filtro-atleta').value='';document.getElementById('hist-filtro-data-ini').value='';document.getElementById('hist-filtro-data-fim').value='';renderHistorico()">✕ Limpar</button>
+      </div>
       <div id="historico-content"></div>
     </div>
 
@@ -1049,6 +1067,26 @@ body.dark-mode #topbar {
         <button class="btn btn-primary" onclick="openAvaliacaoModal()">+ Nova Avaliação</button>
       </div>
       <div id="av-lista"></div>
+    </div>
+
+    <!-- EVOLUÇÃO -->
+    <div class="view" id="view-evolucao">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <label style="font-size:12px;color:var(--cinza-texto);display:block;margin-bottom:4px;">Atleta</label>
+          <select id="ev-atleta" class="form-control" onchange="renderEvolucao()">
+            <option value="">Selecione um atleta...</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--cinza-texto);display:block;margin-bottom:4px;">Visualizar</label>
+          <select id="ev-tipo" class="form-control" onchange="renderEvolucao()">
+            <option value="monitoramento">📊 Wellness & Carga</option>
+            <option value="avaliacao">🏃 Avaliação Funcional</option>
+          </select>
+        </div>
+      </div>
+      <div id="ev-conteudo"></div>
     </div>
 
     <!-- MONITORAMENTO -->
@@ -1120,76 +1158,52 @@ body.dark-mode #topbar {
     </div>
 
     <!-- Side Hop Test -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⏱️ Side Hop Test — 3 tentativas (s) — menor tempo = melhor</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Direito</div>
-        <div class="form-row">
-          <div class="form-group"><label>T1</label><input type="number" step="0.01" class="form-control av-sh-d" id="av-sh-d1" oninput="avCalcBest('sh','d','min')"></div>
-          <div class="form-group"><label>T2</label><input type="number" step="0.01" class="form-control av-sh-d" id="av-sh-d2" oninput="avCalcBest('sh','d','min')"></div>
-          <div class="form-group"><label>T3</label><input type="number" step="0.01" class="form-control av-sh-d" id="av-sh-d3" oninput="avCalcBest('sh','d','min')"></div>
-        </div>
-        <div style="font-size:12px;color:var(--cinza-texto);">Melhor: <strong id="av-sh-d-best" style="color:var(--acento);">—</strong> s</div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Esquerdo</div>
-        <div class="form-row">
-          <div class="form-group"><label>T1</label><input type="number" step="0.01" class="form-control av-sh-e" id="av-sh-e1" oninput="avCalcBest('sh','e','min')"></div>
-          <div class="form-group"><label>T2</label><input type="number" step="0.01" class="form-control av-sh-e" id="av-sh-e2" oninput="avCalcBest('sh','e','min')"></div>
-          <div class="form-group"><label>T3</label><input type="number" step="0.01" class="form-control av-sh-e" id="av-sh-e3" oninput="avCalcBest('sh','e','min')"></div>
-        </div>
-        <div style="font-size:12px;color:var(--cinza-texto);">Melhor: <strong id="av-sh-e-best" style="color:var(--acento);">—</strong> s</div>
-      </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⏱️ Side Hop Test — 3 tentativas intercaladas (s) — menor tempo = melhor</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+      <div class="form-group"><label style="font-size:10px;">D1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d1" oninput="avCalcBest('sh','d','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">E1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e1" oninput="avCalcBest('sh','e','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">D2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d2" oninput="avCalcBest('sh','d','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">E2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e2" oninput="avCalcBest('sh','e','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">D3 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d3" oninput="avCalcBest('sh','d','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">E3 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e3" oninput="avCalcBest('sh','e','min')"></div>
     </div>
-    <div style="text-align:center;background:var(--cinza-fundo);border-radius:8px;padding:8px;margin-bottom:16px;font-size:12px;">LSI Side Hop: <strong id="av-sh-lsi" style="color:var(--acento);">—</strong></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-sh-d-best" style="color:var(--acento);">—</strong> s</div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-sh-lsi" style="color:var(--acento);">—</strong></div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-sh-e-best" style="color:var(--acento);">—</strong> s</div>
+    </div>
 
     <!-- Single Leg Hop -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦘 Single Leg Hop Test — 3 tentativas (cm) — maior distância = melhor</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Direito</div>
-        <div class="form-row">
-          <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-slh-d1" oninput="avCalcBest('slh','d','max')"></div>
-          <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-slh-d2" oninput="avCalcBest('slh','d','max')"></div>
-          <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-slh-d3" oninput="avCalcBest('slh','d','max')"></div>
-        </div>
-        <div style="font-size:12px;color:var(--cinza-texto);">Melhor: <strong id="av-slh-d-best" style="color:var(--acento);">—</strong> cm</div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Esquerdo</div>
-        <div class="form-row">
-          <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-slh-e1" oninput="avCalcBest('slh','e','max')"></div>
-          <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-slh-e2" oninput="avCalcBest('slh','e','max')"></div>
-          <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-slh-e3" oninput="avCalcBest('slh','e','max')"></div>
-        </div>
-        <div style="font-size:12px;color:var(--cinza-texto);">Melhor: <strong id="av-slh-e-best" style="color:var(--acento);">—</strong> cm</div>
-      </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦘 Single Leg Hop Test — 3 tentativas intercaladas (m) — maior distância = melhor</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+      <div class="form-group"><label style="font-size:10px;">D1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d1" oninput="avCalcBest('slh','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e1" oninput="avCalcBest('slh','e','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">D2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d2" oninput="avCalcBest('slh','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e2" oninput="avCalcBest('slh','e','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">D3 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d3" oninput="avCalcBest('slh','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E3 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e3" oninput="avCalcBest('slh','e','max')"></div>
     </div>
-    <div style="text-align:center;background:var(--cinza-fundo);border-radius:8px;padding:8px;margin-bottom:16px;font-size:12px;">LSI Single Leg Hop: <strong id="av-slh-lsi" style="color:var(--acento);">—</strong></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-slh-d-best" style="color:var(--acento);">—</strong> m</div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-slh-lsi" style="color:var(--acento);">—</strong></div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-slh-e-best" style="color:var(--acento);">—</strong> m</div>
+    </div>
 
     <!-- Preensão Palmar -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">✊ Preensão Palmar — 3 tentativas (kgf)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Direito</div>
-        <div class="form-row">
-          <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-grip-d1" oninput="avCalcBest('grip','d','max')"></div>
-          <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-grip-d2" oninput="avCalcBest('grip','d','max')"></div>
-          <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-grip-d3" oninput="avCalcBest('grip','d','max')"></div>
-        </div>
-        <div style="font-size:12px;color:var(--cinza-texto);">Melhor: <strong id="av-grip-d-best" style="color:var(--acento);">—</strong> kgf</div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Esquerdo</div>
-        <div class="form-row">
-          <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-grip-e1" oninput="avCalcBest('grip','e','max')"></div>
-          <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-grip-e2" oninput="avCalcBest('grip','e','max')"></div>
-          <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-grip-e3" oninput="avCalcBest('grip','e','max')"></div>
-        </div>
-        <div style="font-size:12px;color:var(--cinza-texto);">Melhor: <strong id="av-grip-e-best" style="color:var(--acento);">—</strong> kgf</div>
-      </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">✊ Preensão Palmar — 3 tentativas intercaladas (kgf)</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+      <div class="form-group"><label style="font-size:10px;">D1 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-d1" oninput="avCalcBest('grip','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E1 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-e1" oninput="avCalcBest('grip','e','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">D2 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-d2" oninput="avCalcBest('grip','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E2 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-e2" oninput="avCalcBest('grip','e','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">D3 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-d3" oninput="avCalcBest('grip','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E3 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-e3" oninput="avCalcBest('grip','e','max')"></div>
     </div>
-    <div style="text-align:center;background:var(--cinza-fundo);border-radius:8px;padding:8px;margin-bottom:16px;font-size:12px;">LSI Preensão Palmar: <strong id="av-grip-lsi" style="color:var(--acento);">—</strong></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-grip-d-best" style="color:var(--acento);">—</strong> kgf</div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-grip-lsi" style="color:var(--acento);">—</strong></div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-grip-e-best" style="color:var(--acento);">—</strong> kgf</div>
+    </div>
 
     <!-- Flexibilidade Isquiossurais -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Flexibilidade Isquiossurais (°)</div>
@@ -1200,28 +1214,20 @@ body.dark-mode #topbar {
 
     <!-- Thomas Modificado -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Thomas Modificado (°)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Reto Femoral</div>
-        <div class="form-row">
-          <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-d"></div>
-          <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-e"></div>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:6px;">Iliopsoas</div>
-        <div class="form-row">
-          <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-d"></div>
-          <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-e"></div>
-        </div>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      <div class="form-group"><label style="font-size:11px;">Iliopsoas D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Reto Femoral D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Iliopsoas E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Reto Femoral E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-e"></div>
     </div>
 
     <!-- Nordic Hamstring -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">💪 Nordic Hamstring Test (°)</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">💪 Nordic Hamstring Test — bilateral (°)</div>
     <div class="form-row" style="margin-bottom:16px;">
-      <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-nordic-d"></div>
-      <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-nordic-e"></div>
+      <div class="form-group">
+        <label>Resultado bilateral (°)</label>
+        <input type="number" step="0.1" class="form-control" id="av-nordic-d" placeholder="Ex: 45">
+      </div>
     </div>
 
     <!-- Y-Balance Test -->
@@ -1492,7 +1498,14 @@ body.dark-mode #topbar {
     </div>
     <div class="form-group" style="margin-bottom:16px;">
       <label style="font-size:12px;color:var(--cinza-texto);">Seu nome</label>
-      <select class="form-control" id="w-atleta" style="margin-top:4px;"></select>
+      <select class="form-control" id="w-atleta" style="margin-top:4px;" onchange="wConfirmAtleta()"></select>
+      <div id="w-atleta-confirm" style="display:none;margin-top:10px;display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--cinza-fundo);border-radius:8px;">
+        <div id="w-atleta-foto" style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--cinza-borda);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚽</div>
+        <div>
+          <div id="w-atleta-nome" style="font-weight:700;font-size:14px;"></div>
+          <div style="font-size:11px;color:var(--cinza-texto);">É você? ✅</div>
+        </div>
+      </div>
     </div>
     <div class="slider-row">
       <label>Qualidade do Sono <span id="wl-sono">3</span></label>
@@ -1556,7 +1569,14 @@ body.dark-mode #topbar {
     </div>
     <div class="form-group" style="margin-bottom:20px;">
       <label style="font-size:12px;color:var(--cinza-texto);">Seu nome</label>
-      <select class="form-control" id="p-atleta" style="margin-top:4px;"></select>
+      <select class="form-control" id="p-atleta" style="margin-top:4px;" onchange="pConfirmAtleta()"></select>
+      <div id="p-atleta-confirm" style="display:none;margin-top:10px;display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--cinza-fundo);border-radius:8px;">
+        <div id="p-atleta-foto" style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--cinza-borda);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚽</div>
+        <div>
+          <div id="p-atleta-nome" style="font-weight:700;font-size:14px;"></div>
+          <div style="font-size:11px;color:var(--cinza-texto);">É você? ✅</div>
+        </div>
+      </div>
     </div>
     <div class="slider-row">
       <label>Como foi a intensidade do treino? <span id="pl-pse">5</span></label>
@@ -1852,7 +1872,7 @@ function showSection(section) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
 
   const navMap = {
-    dashboard: 0, atletas: 1, hoje: 2, historico: 3, fisios: 4, monitoramento: 5, avaliacao: 6
+    dashboard: 0, atletas: 1, hoje: 2, historico: 3, monitoramento: 4, avaliacao: 5, evolucao: 6, fisios: 7
   };
 
   document.querySelectorAll('.nav-item')[navMap[section] ?? 0].classList.add('active');
@@ -1865,7 +1885,8 @@ function showSection(section) {
     historico: 'Histórico Geral',
     fisios: 'Fisioterapeutas',
     monitoramento: 'Monitoramento',
-    avaliacao: 'Avaliação Funcional'
+    avaliacao: 'Avaliação Funcional',
+    evolucao: 'Evolução'
   };
 
   document.getElementById('topbar-title').textContent = titleMap[section] || section;
@@ -1881,6 +1902,7 @@ function showSection(section) {
   if (section === 'fisios') renderFisios();
   if (section === 'monitoramento') renderMonitoramento();
   if (section === 'avaliacao') renderAvaliacao();
+  if (section === 'evolucao') renderEvolucao();
 }
 
 // -- DASHBOARD ---------------------------------------------------------
@@ -1918,6 +1940,89 @@ async function renderDashboard() {
       </div>
     `).join('');
   }
+
+  // -- ALERTAS: ACWR e Hooper --
+  await renderDashboardAlertas(athletes);
+}
+
+async function renderDashboardAlertas(athletes) {
+  const alertasEl = document.getElementById('dashboard-alertas');
+  if (!alertasEl) return;
+
+  const allMon = await getMonitoringByCat();
+  const today = new Date().toISOString().split('T')[0];
+  const atletaMap = {};
+  athletes.forEach(a => atletaMap[a.id] = a);
+
+  const alertas = [];
+
+  athletes.filter(a => a.status === 'ativo').forEach(a => {
+    const hist = allMon.filter(m => m.athleteId == a.id).sort((x,y) => y.data.localeCompare(x.data));
+
+    // Hooper de hoje
+    const monHoje = hist.find(m => m.data === today);
+    if (monHoje?.hooper && monHoje.hooper < 11) {
+      alertas.push({
+        tipo: 'hooper',
+        atletaId: a.id,
+        nome: a.apelido || a.nome,
+        foto: a.foto,
+        msg: `Hooper baixo hoje: ${monHoje.hooper}/25`,
+        detalhe: 'Baixa prontidão para o treino',
+        cor: 'var(--perigo)'
+      });
+    }
+
+    // ACWR
+    const stats = calcStats(hist);
+    if (stats.acwr !== null && stats.acwr > 1.5) {
+      alertas.push({
+        tipo: 'acwr',
+        atletaId: a.id,
+        nome: a.apelido || a.nome,
+        foto: a.foto,
+        msg: `ACWR elevado: ${stats.acwr.toFixed(2)}`,
+        detalhe: 'Zona de risco — overtraining',
+        cor: '#ffab00'
+      });
+    } else if (stats.acwr !== null && stats.acwr > 1.3) {
+      alertas.push({
+        tipo: 'acwr',
+        atletaId: a.id,
+        nome: a.apelido || a.nome,
+        foto: a.foto,
+        msg: `ACWR em atenção: ${stats.acwr.toFixed(2)}`,
+        detalhe: 'Zona de cautela',
+        cor: '#ffab00'
+      });
+    }
+  });
+
+  if (alertas.length === 0) {
+    alertasEl.innerHTML = `
+      <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;padding:16px 20px;">
+        <h3 style="font-size:14px;margin-bottom:0;display:flex;align-items:center;gap:8px;">⚡ Alertas <span style="color:#00c853;font-size:13px;font-weight:400;">Nenhum alerta hoje ✅</span></h3>
+      </div>`;
+    return;
+  }
+
+  alertasEl.innerHTML = `
+    <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;padding:16px 20px;">
+      <h3 style="font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">⚡ Alertas <span style="background:var(--perigo);color:#fff;border-radius:20px;padding:2px 8px;font-size:11px;">${alertas.length}</span></h3>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${alertas.map(al => `
+          <div onclick="openAthleteDetail(${al.atletaId})" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--cinza-fundo);border:1px solid ${al.cor}33;border-left:3px solid ${al.cor};border-radius:8px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='var(--cinza-borda)'" onmouseout="this.style.background='var(--cinza-fundo)'">
+            <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--cinza-borda);display:flex;align-items:center;justify-content:center;">
+              ${al.foto ? `<img src="${al.foto}" style="width:100%;height:100%;object-fit:cover;">` : '⚽'}
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:13px;">${escapeHtml(al.nome)}</div>
+              <div style="font-size:12px;color:${al.cor};">${al.msg}</div>
+              <div style="font-size:11px;color:var(--cinza-texto);">${al.detalhe}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 // -- ATLETAS -----------------------------------------------------------
@@ -2181,19 +2286,38 @@ async function renderHoje() {
 
 // -- HISTÓRICO ---------------------------------------------------------
 async function renderHistorico() {
-  const sessions = await getSessionsByCat();
+  const athletes = await getAthletesByCat();
+  let sessions = await getSessionsByCat();
   sessions.sort((a, b) => b.data.localeCompare(a.data));
+
+  // Populate athlete filter
+  const selEl = document.getElementById('hist-filtro-atleta');
+  if (selEl) {
+    const currentVal = selEl.value;
+    selEl.innerHTML = '<option value="">Todos os atletas</option>' +
+      athletes.sort((a,b)=>(a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
+        .map(a=>`<option value="${a.id}">${a.apelido||a.nome}</option>`).join('');
+    selEl.value = currentVal;
+  }
+
+  // Apply filters
+  const filtroAtleta = selEl?.value || '';
+  const filtroIni = document.getElementById('hist-filtro-data-ini')?.value || '';
+  const filtroFim = document.getElementById('hist-filtro-data-fim')?.value || '';
+  if (filtroAtleta) sessions = sessions.filter(s => s.athleteId == filtroAtleta);
+  if (filtroIni) sessions = sessions.filter(s => s.data >= filtroIni);
+  if (filtroFim) sessions = sessions.filter(s => s.data <= filtroFim);
 
   const container = document.getElementById('historico-content');
   if (sessions.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><h3>Nenhum atendimento registrado</h3></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><h3>Nenhum atendimento encontrado</h3><p>Ajuste os filtros para ver outros registros.</p></div>`;
     return;
   }
 
-  const items = await Promise.all(sessions.map(async s => {
-    const a = await dbGet('athletes', s.athleteId);
-    return { session: s, athlete: a };
-  }));
+  const atletaMap = {};
+  athletes.forEach(a => atletaMap[a.id] = a);
+
+  const items = sessions.map(s => ({ session: s, athlete: atletaMap[s.athleteId] || {} }));
 
   // Group by date
   const byDate = {};
@@ -2658,6 +2782,30 @@ function wSelectUrina(n) {
   document.getElementById('w-urina-label').textContent = URINA_NOMES[n] || '';
 }
 
+async function wConfirmAtleta() {
+  const id = parseInt(document.getElementById('w-atleta').value);
+  const confirmDiv = document.getElementById('w-atleta-confirm');
+  if (!id) { confirmDiv.style.display = 'none'; return; }
+  const a = await dbGet('athletes', id);
+  if (!a) return;
+  document.getElementById('w-atleta-nome').textContent = a.apelido || a.nome;
+  const fotoEl = document.getElementById('w-atleta-foto');
+  fotoEl.innerHTML = a.foto ? `<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover;">` : '⚽';
+  confirmDiv.style.display = 'flex';
+}
+
+async function pConfirmAtleta() {
+  const id = parseInt(document.getElementById('p-atleta').value);
+  const confirmDiv = document.getElementById('p-atleta-confirm');
+  if (!id) { confirmDiv.style.display = 'none'; return; }
+  const a = await dbGet('athletes', id);
+  if (!a) return;
+  document.getElementById('p-atleta-nome').textContent = a.apelido || a.nome;
+  const fotoEl = document.getElementById('p-atleta-foto');
+  fotoEl.innerHTML = a.foto ? `<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover;">` : '⚽';
+  confirmDiv.style.display = 'flex';
+}
+
 async function loadAtletasSelect(selId) {
   const athletes = await dbGetAll('athletes');
   const sel = document.getElementById(selId);
@@ -2991,6 +3139,37 @@ async function checkHash() {
 }
 window.addEventListener('hashchange', checkHash);
 
+// ── PWA: instalar e indicador offline ────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'inline-flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'none';
+  showToast('✅ App instalado com sucesso!');
+});
+
+window.addEventListener('online', () => {
+  sbStatus('ok', '☁️ Supabase conectado');
+  showToast('🟢 Conexão restaurada');
+});
+window.addEventListener('offline', () => {
+  sbStatus('err', '⚠️ Sem conexão — dados podem não sincronizar');
+  showToast('🔴 Sem internet — modo offline');
+});
+
+window.installPWA = async function() {
+  if (!deferredPrompt) { showToast('Use "Adicionar à tela inicial" no menu do navegador'); return; }
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+};
+
 // Inicialização: verifica hash primeiro, só faz login se não for wellness/pse
 (async () => {
   const isPublicForm = await checkHash();
@@ -3094,6 +3273,11 @@ window.openAvaliacaoModal = async function openAvaliacaoModal(id) {
     sel.value = id;
     await avPreencherDados();
   }
+
+  // Reset save button to default (new)
+  const btn = document.getElementById('av-btn-save');
+  btn.textContent = 'Salvar Avaliação';
+  btn.onclick = saveAvaliacao;
 
   openModal('modal-avaliacao');
 }
@@ -3203,10 +3387,115 @@ async function deleteAvaliacao(id) {
   showToast('Avaliação excluída.');
   renderAvaliacao();
 }
+window.deleteAvaliacao = deleteAvaliacao;
 window.avCalcBest = avCalcBest;
 window.avCalcYBT = avCalcYBT;
 window.avPreencherDados = avPreencherDados;
 window.renderAvaliacao = renderAvaliacao;
+
+function toggleAvaliacaoDetalhe(id) {
+  const el = document.getElementById(`av-detalhe-${id}`);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+window.toggleAvaliacaoDetalhe = toggleAvaliacaoDetalhe;
+
+async function editAvaliacao(id) {
+  const { data: r } = await supa.from('functional_assessments').select('*').eq('id', id).single();
+  if (!r) return;
+
+  await openAvaliacaoModal(r.athleteId);
+
+  const s = (fieldId, val) => { const el = document.getElementById(fieldId); if(el && val !== null && val !== undefined) el.value = val; };
+
+  s('av-data', r.data);
+  s('av-mmii-d', r.mmii_d); s('av-mmii-e', r.mmii_e);
+  s('av-squeeze-d', r.squeeze_d); s('av-squeeze-e', r.squeeze_e);
+  s('av-lunge-d', r.lunge_d); s('av-lunge-e', r.lunge_e);
+  s('av-sh-d1', r.side_hop_d1); s('av-sh-e1', r.side_hop_e1);
+  s('av-sh-d2', r.side_hop_d2); s('av-sh-e2', r.side_hop_e2);
+  s('av-sh-d3', r.side_hop_d3); s('av-sh-e3', r.side_hop_e3);
+  s('av-slh-d1', r.slh_d1); s('av-slh-e1', r.slh_e1);
+  s('av-slh-d2', r.slh_d2); s('av-slh-e2', r.slh_e2);
+  s('av-slh-d3', r.slh_d3); s('av-slh-e3', r.slh_e3);
+  s('av-grip-d1', r.grip_d1); s('av-grip-e1', r.grip_e1);
+  s('av-grip-d2', r.grip_d2); s('av-grip-e2', r.grip_e2);
+  s('av-grip-d3', r.grip_d3); s('av-grip-e3', r.grip_e3);
+  s('av-isquio-d', r.isquio_d); s('av-isquio-e', r.isquio_e);
+  s('av-thomas-reto-d', r.thomas_reto_d); s('av-thomas-reto-e', r.thomas_reto_e);
+  s('av-thomas-ilio-d', r.thomas_iliopsoas_d); s('av-thomas-ilio-e', r.thomas_iliopsoas_e);
+  s('av-nordic-d', r.nordic_d); s('av-nordic-e', r.nordic_e);
+  s('av-ybt-ant-d1', r.ybt_ant_d1); s('av-ybt-ant-d2', r.ybt_ant_d2); s('av-ybt-ant-d3', r.ybt_ant_d3);
+  s('av-ybt-pm-d1', r.ybt_pm_d1); s('av-ybt-pm-d2', r.ybt_pm_d2); s('av-ybt-pm-d3', r.ybt_pm_d3);
+  s('av-ybt-pl-d1', r.ybt_pl_d1); s('av-ybt-pl-d2', r.ybt_pl_d2); s('av-ybt-pl-d3', r.ybt_pl_d3);
+  s('av-ybt-ant-e1', r.ybt_ant_e1); s('av-ybt-ant-e2', r.ybt_ant_e2); s('av-ybt-ant-e3', r.ybt_ant_e3);
+  s('av-ybt-pm-e1', r.ybt_pm_e1); s('av-ybt-pm-e2', r.ybt_pm_e2); s('av-ybt-pm-e3', r.ybt_pm_e3);
+  s('av-ybt-pl-e1', r.ybt_pl_e1); s('av-ybt-pl-e2', r.ybt_pl_e2); s('av-ybt-pl-e3', r.ybt_pl_e3);
+  s('av-obs', r.observacoes);
+
+  ['sh','slh','grip'].forEach(p => {
+    avCalcBest(p,'d', p==='sh'?'min':'max');
+    avCalcBest(p,'e', p==='sh'?'min':'max');
+  });
+  avCalcYBT('d'); avCalcYBT('e');
+
+  const btn = document.getElementById('av-btn-save');
+  btn.textContent = 'Atualizar Avaliação';
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Atualizando...';
+    try {
+      const g = fid => parseFloat(document.getElementById(fid)?.value) || null;
+      const sh_d = avGetBest('sh','d','min'), sh_e = avGetBest('sh','e','min');
+      const slh_d = avGetBest('slh','d','max'), slh_e = avGetBest('slh','e','max');
+      const grip_d = avGetBest('grip','d','max'), grip_e = avGetBest('grip','e','max');
+      const mmii_d = g('av-mmii-d'), mmii_e = g('av-mmii-e');
+      const ybt_ant_d = avGetBestYBT('ant','d'), ybt_pm_d = avGetBestYBT('pm','d'), ybt_pl_d = avGetBestYBT('pl','d');
+      const ybt_ant_e = avGetBestYBT('ant','e'), ybt_pm_e = avGetBestYBT('pm','e'), ybt_pl_e = avGetBestYBT('pl','e');
+      const ybt_comp_d = (ybt_ant_d&&ybt_pm_d&&ybt_pl_d&&mmii_d) ? parseFloat(((ybt_ant_d+ybt_pm_d+ybt_pl_d)/(mmii_d*3)*100).toFixed(1)) : null;
+      const ybt_comp_e = (ybt_ant_e&&ybt_pm_e&&ybt_pl_e&&mmii_e) ? parseFloat(((ybt_ant_e+ybt_pm_e+ybt_pl_e)/(mmii_e*3)*100).toFixed(1)) : null;
+
+      await supa.from('functional_assessments').update({
+        data: document.getElementById('av-data').value,
+        mmii_d, mmii_e,
+        squeeze_d: g('av-squeeze-d'), squeeze_e: g('av-squeeze-e'),
+        lunge_d: g('av-lunge-d'), lunge_e: g('av-lunge-e'),
+        side_hop_d1: g('av-sh-d1'), side_hop_d2: g('av-sh-d2'), side_hop_d3: g('av-sh-d3'), side_hop_d_best: sh_d,
+        side_hop_e1: g('av-sh-e1'), side_hop_e2: g('av-sh-e2'), side_hop_e3: g('av-sh-e3'), side_hop_e_best: sh_e,
+        side_hop_lsi: avLSI(sh_d,sh_e),
+        slh_d1: g('av-slh-d1'), slh_d2: g('av-slh-d2'), slh_d3: g('av-slh-d3'), slh_d_best: slh_d,
+        slh_e1: g('av-slh-e1'), slh_e2: g('av-slh-e2'), slh_e3: g('av-slh-e3'), slh_e_best: slh_e,
+        slh_lsi: avLSI(slh_d,slh_e),
+        grip_d1: g('av-grip-d1'), grip_d2: g('av-grip-d2'), grip_d3: g('av-grip-d3'), grip_d_best: grip_d,
+        grip_e1: g('av-grip-e1'), grip_e2: g('av-grip-e2'), grip_e3: g('av-grip-e3'), grip_e_best: grip_e,
+        grip_lsi: avLSI(grip_d,grip_e),
+        isquio_d: g('av-isquio-d'), isquio_e: g('av-isquio-e'),
+        thomas_reto_d: g('av-thomas-reto-d'), thomas_reto_e: g('av-thomas-reto-e'),
+        thomas_iliopsoas_d: g('av-thomas-ilio-d'), thomas_iliopsoas_e: g('av-thomas-ilio-e'),
+        nordic_d: g('av-nordic-d'), nordic_e: g('av-nordic-e'),
+        ybt_ant_d1: g('av-ybt-ant-d1'), ybt_ant_d2: g('av-ybt-ant-d2'), ybt_ant_d3: g('av-ybt-ant-d3'),
+        ybt_pm_d1: g('av-ybt-pm-d1'), ybt_pm_d2: g('av-ybt-pm-d2'), ybt_pm_d3: g('av-ybt-pm-d3'),
+        ybt_pl_d1: g('av-ybt-pl-d1'), ybt_pl_d2: g('av-ybt-pl-d2'), ybt_pl_d3: g('av-ybt-pl-d3'),
+        ybt_ant_d_best: ybt_ant_d, ybt_pm_d_best: ybt_pm_d, ybt_pl_d_best: ybt_pl_d, ybt_composto_d: ybt_comp_d,
+        ybt_ant_e1: g('av-ybt-ant-e1'), ybt_ant_e2: g('av-ybt-ant-e2'), ybt_ant_e3: g('av-ybt-ant-e3'),
+        ybt_pm_e1: g('av-ybt-pm-e1'), ybt_pm_e2: g('av-ybt-pm-e2'), ybt_pm_e3: g('av-ybt-pm-e3'),
+        ybt_pl_e1: g('av-ybt-pl-e1'), ybt_pl_e2: g('av-ybt-pl-e2'), ybt_pl_e3: g('av-ybt-pl-e3'),
+        ybt_ant_e_best: ybt_ant_e, ybt_pm_e_best: ybt_pm_e, ybt_pl_e_best: ybt_pl_e, ybt_composto_e: ybt_comp_e,
+        ybt_lsi: avLSI(ybt_comp_d,ybt_comp_e),
+        observacoes: document.getElementById('av-obs')?.value.trim() || null
+      }).eq('id', id);
+
+      showToast('✅ Avaliação atualizada!');
+      closeModal('modal-avaliacao');
+      renderAvaliacao();
+    } catch(e) {
+      console.error(e);
+      showToast('Erro ao atualizar.');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Atualizar Avaliação';
+    }
+  };
+}
+window.editAvaliacao = editAvaliacao;
 
 function lsiBadge(lsi) {
   if (!lsi) return '—';
@@ -3246,26 +3535,417 @@ async function renderAvaliacao() {
           <div style="font-size:16px;font-weight:700;">${escapeHtml(a.apelido||a.nome||'—')}</div>
           <div style="font-size:12px;color:var(--cinza-texto);">📅 ${formatDate(r.data)} &nbsp;|&nbsp; ${r.posicao||'—'} &nbsp;|&nbsp; ${r.peso||'—'} kg / ${r.altura||'—'} m</div>
         </div>
-        ${currentRole==='admin' ? `<button onclick="deleteAvaliacao(${r.id})" class="btn btn-danger btn-sm">🗑️</button>` : ''}
+        <div style="display:flex;gap:8px;">
+          <button onclick="toggleAvaliacaoDetalhe(${r.id})" class="btn btn-ghost btn-sm">👁️ Ver completo</button>
+          <button onclick="editAvaliacao(${r.id})" class="btn btn-ghost btn-sm">✏️ Editar</button>
+          <button onclick="exportAvaliacaoPDF(${r.id})" class="btn btn-ghost btn-sm">📄 PDF</button>
+          ${currentRole==='admin' ? `<button onclick="deleteAvaliacao(${r.id})" class="btn btn-danger btn-sm">🗑️</button>` : ''}
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;font-size:12px;">
         ${r.mmii_d||r.mmii_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">MMII</div><div>D: <strong>${r.mmii_d||'—'}</strong> cm &nbsp; E: <strong>${r.mmii_e||'—'}</strong> cm</div></div>` : ''}
-        ${r.squeeze_d||r.squeeze_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Squeeze Test (dor)</div><div>D: <strong>${r.squeeze_d||'—'}</strong> &nbsp; E: <strong>${r.squeeze_e||'—'}</strong></div></div>` : ''}
+        ${r.squeeze_d||r.squeeze_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Squeeze Test (dor 0-10)</div><div>D: <strong>${r.squeeze_d||'—'}</strong> &nbsp; E: <strong>${r.squeeze_e||'—'}</strong></div></div>` : ''}
         ${r.lunge_d||r.lunge_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Lunge Test</div><div>D: <strong>${r.lunge_d||'—'}°</strong> &nbsp; E: <strong>${r.lunge_e||'—'}°</strong></div></div>` : ''}
-        ${r.side_hop_d_best||r.side_hop_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop (s)</div><div>D: <strong>${r.side_hop_d_best||'—'}</strong> &nbsp; E: <strong>${r.side_hop_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.side_hop_lsi)}</div></div>` : ''}
-        ${r.slh_d_best||r.slh_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop (cm)</div><div>D: <strong>${r.slh_d_best||'—'}</strong> &nbsp; E: <strong>${r.slh_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.slh_lsi)}</div></div>` : ''}
-        ${r.grip_d_best||r.grip_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar (kgf)</div><div>D: <strong>${r.grip_d_best||'—'}</strong> &nbsp; E: <strong>${r.grip_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.grip_lsi)}</div></div>` : ''}
+        ${r.side_hop_d_best||r.side_hop_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop — melhor (s)</div><div>D: <strong>${r.side_hop_d_best||'—'}</strong> &nbsp; E: <strong>${r.side_hop_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.side_hop_lsi)}</div></div>` : ''}
+        ${r.slh_d_best||r.slh_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop — melhor (m)</div><div>D: <strong>${r.slh_d_best||'—'}</strong> &nbsp; E: <strong>${r.slh_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.slh_lsi)}</div></div>` : ''}
+        ${r.grip_d_best||r.grip_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar — melhor (kgf)</div><div>D: <strong>${r.grip_d_best||'—'}</strong> &nbsp; E: <strong>${r.grip_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.grip_lsi)}</div></div>` : ''}
         ${r.isquio_d||r.isquio_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Isquiossurais (°)</div><div>D: <strong>${r.isquio_d||'—'}</strong> &nbsp; E: <strong>${r.isquio_e||'—'}</strong></div></div>` : ''}
-        ${r.thomas_reto_d||r.thomas_reto_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Reto Femoral (°)</div><div>D: <strong>${r.thomas_reto_d||'—'}</strong> &nbsp; E: <strong>${r.thomas_reto_e||'—'}</strong></div></div>` : ''}
         ${r.thomas_iliopsoas_d||r.thomas_iliopsoas_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Iliopsoas (°)</div><div>D: <strong>${r.thomas_iliopsoas_d||'—'}</strong> &nbsp; E: <strong>${r.thomas_iliopsoas_e||'—'}</strong></div></div>` : ''}
-        ${r.nordic_d||r.nordic_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Nordic Hamstring (°)</div><div>D: <strong>${r.nordic_d||'—'}</strong> &nbsp; E: <strong>${r.nordic_e||'—'}</strong></div></div>` : ''}
+        ${r.thomas_reto_d||r.thomas_reto_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Reto Femoral (°)</div><div>D: <strong>${r.thomas_reto_d||'—'}</strong> &nbsp; E: <strong>${r.thomas_reto_e||'—'}</strong></div></div>` : ''}
+        ${r.nordic_d ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Nordic Hamstring bilateral (°)</div><div><strong>${r.nordic_d||'—'}°</strong></div></div>` : ''}
         ${r.ybt_composto_d||r.ybt_composto_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Y-Balance Composto</div><div>D: <strong>${r.ybt_composto_d||'—'}%</strong> &nbsp; E: <strong>${r.ybt_composto_e||'—'}%</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.ybt_lsi)}</div></div>` : ''}
       </div>
-      ${r.observacoes ? `<div style="margin-top:12px;font-size:12px;color:var(--cinza-texto);border-top:1px solid var(--cinza-borda);padding-top:10px;">${escapeHtml(r.observacoes)}</div>` : ''}
+
+      <!-- Detalhe expandido (oculto por padrão) -->
+      <div id="av-detalhe-${r.id}" style="display:none;margin-top:16px;border-top:1px solid var(--cinza-borda);padding-top:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:12px;">Todas as tentativas</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;font-size:12px;">
+          ${r.side_hop_d1||r.side_hop_e1 ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop — tentativas (s)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
+              <div>D1: <strong>${r.side_hop_d1||'—'}</strong></div><div>E1: <strong>${r.side_hop_e1||'—'}</strong></div>
+              <div></div>
+              <div>D2: <strong>${r.side_hop_d2||'—'}</strong></div><div>E2: <strong>${r.side_hop_e2||'—'}</strong></div>
+              <div></div>
+              <div>D3: <strong>${r.side_hop_d3||'—'}</strong></div><div>E3: <strong>${r.side_hop_e3||'—'}</strong></div>
+            </div></div>` : ''}
+          ${r.slh_d1||r.slh_e1 ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop — tentativas (m)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
+              <div>D1: <strong>${r.slh_d1||'—'}</strong></div><div>E1: <strong>${r.slh_e1||'—'}</strong></div>
+              <div></div>
+              <div>D2: <strong>${r.slh_d2||'—'}</strong></div><div>E2: <strong>${r.slh_e2||'—'}</strong></div>
+              <div></div>
+              <div>D3: <strong>${r.slh_d3||'—'}</strong></div><div>E3: <strong>${r.slh_e3||'—'}</strong></div>
+            </div></div>` : ''}
+          ${r.grip_d1||r.grip_e1 ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar — tentativas (kgf)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
+              <div>D1: <strong>${r.grip_d1||'—'}</strong></div><div>E1: <strong>${r.grip_e1||'—'}</strong></div>
+              <div></div>
+              <div>D2: <strong>${r.grip_d2||'—'}</strong></div><div>E2: <strong>${r.grip_e2||'—'}</strong></div>
+              <div></div>
+              <div>D3: <strong>${r.grip_d3||'—'}</strong></div><div>E3: <strong>${r.grip_e3||'—'}</strong></div>
+            </div></div>` : ''}
+          ${r.ybt_ant_d_best||r.ybt_ant_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Y-Balance — melhores (cm)</div>
+            <div style="margin-top:4px;">
+              <div>ANT: D <strong>${r.ybt_ant_d_best||'—'}</strong> / E <strong>${r.ybt_ant_e_best||'—'}</strong></div>
+              <div>PM: D <strong>${r.ybt_pm_d_best||'—'}</strong> / E <strong>${r.ybt_pm_e_best||'—'}</strong></div>
+              <div>PL: D <strong>${r.ybt_pl_d_best||'—'}</strong> / E <strong>${r.ybt_pl_e_best||'—'}</strong></div>
+            </div></div>` : ''}
+        </div>
+        ${r.observacoes ? `<div style="margin-top:12px;font-size:12px;color:var(--cinza-texto);">📝 ${escapeHtml(r.observacoes)}</div>` : ''}
+      </div>
+
+      ${r.observacoes && !r.side_hop_d1 ? `<div style="margin-top:12px;font-size:12px;color:var(--cinza-texto);border-top:1px solid var(--cinza-borda);padding-top:10px;">📝 ${escapeHtml(r.observacoes)}</div>` : ''}
     </div>`;
   }).join('');
 }
+// ── EVOLUÇÃO ──────────────────────────────────────────────────
+async function renderEvolucao() {
+  const athletes = await getAthletesByCat();
+  const sel = document.getElementById('ev-atleta');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">Selecione um atleta...</option>' +
+    athletes.sort((a,b)=>(a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
+      .map(a=>`<option value="${a.id}">${a.apelido||a.nome}</option>`).join('');
+  sel.value = currentVal;
+
+  const athleteId = parseInt(sel.value);
+  const tipo = document.getElementById('ev-tipo').value;
+  const container = document.getElementById('ev-conteudo');
+
+  if (!athleteId) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📈</div><h3>Selecione um atleta</h3><p>Escolha um atleta para ver sua evolução.</p></div>`;
+    return;
+  }
+  if (tipo === 'monitoramento') await renderEvolucaoMonitoramento(athleteId, container);
+  else await renderEvolucaoAvaliacao(athleteId, container);
+}
+
+function drawLineChart(canvasId, labels, datasets, yLabel) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.parentElement.clientWidth - 32;
+  const W = canvas.width, H = 200;
+  canvas.height = H;
+  const pad = { top: 20, right: 20, bottom: 36, left: 48 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+  ctx.clearRect(0, 0, W, H);
+
+  const allVals = datasets.flatMap(d => d.data.filter(v => v !== null));
+  if (!allVals.length) return;
+  const minV = Math.min(...allVals);
+  const maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+  const toX = i => pad.left + (labels.length > 1 ? (i / (labels.length-1)) * cW : cW/2);
+  const toY = v => pad.top + cH - ((v - minV) / range) * cH;
+
+  ctx.strokeStyle = '#2a2e38'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (cH/4)*i;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+cW, y); ctx.stroke();
+    ctx.fillStyle = '#8a909e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText((maxV-(range/4)*i).toFixed(1), pad.left-5, y+4);
+  }
+  ctx.fillStyle = '#8a909e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  const step = Math.max(1, Math.floor(labels.length/6));
+  labels.forEach((l,i) => { if(i%step===0) ctx.fillText(l.slice(5), toX(i), H-8); });
+
+  datasets.forEach(ds => {
+    ctx.strokeStyle = ds.color; ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    ds.data.forEach((v,i) => {
+      if (v===null) { started=false; return; }
+      if (!started) { ctx.moveTo(toX(i),toY(v)); started=true; }
+      else ctx.lineTo(toX(i),toY(v));
+    });
+    ctx.stroke();
+    ds.data.forEach((v,i) => {
+      if (v===null) return;
+      ctx.fillStyle = ds.color;
+      ctx.beginPath(); ctx.arc(toX(i),toY(v),3,0,Math.PI*2); ctx.fill();
+    });
+  });
+}
+
+function makeChart(title, labels, datasets, yLabel, legendItems) {
+  const id = 'chart-'+Math.random().toString(36).slice(2,8);
+  const legend = legendItems.map(l=>`<span style="font-size:11px;color:var(--cinza-texto);"><span style="display:inline-block;width:12px;height:3px;background:${l.color};vertical-align:middle;margin-right:4px;border-radius:2px;"></span>${l.label}</span>`).join('');
+  setTimeout(() => drawLineChart(id, labels, datasets, yLabel), 50);
+  return `
+    <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--branco);margin-bottom:8px;">${title}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;">${legend}</div>
+      <canvas id="${id}" style="width:100%;display:block;"></canvas>
+    </div>`;
+}
+
+async function renderEvolucaoMonitoramento(athleteId, container) {
+  const allMon = await getMonitoringByCat();
+  const hist = allMon.filter(m => m.athleteId == athleteId)
+    .sort((a,b) => a.data.localeCompare(b.data)).slice(-30);
+
+  if (!hist.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📊</div><h3>Sem registros de monitoramento</h3></div>`;
+    return;
+  }
+  const labels = hist.map(m => m.data);
+  const acwrData = hist.map((_,i) => { const s = calcStats(hist.slice(0,i+1)); return s.acwr!==null?parseFloat(s.acwr.toFixed(2)):null; });
+
+  container.innerHTML =
+    makeChart('Hooper Index & Recuperação', labels,
+      [{data:hist.map(m=>m.hooper||null),color:'#e0282e'},{data:hist.map(m=>m.recuperacao||null),color:'#00c853'}],
+      '', [{label:'Hooper',color:'#e0282e'},{label:'Recuperação',color:'#00c853'}]) +
+    makeChart('Carga Diária (UA)', labels,
+      [{data:hist.map(m=>m.pse_carga||null),color:'#60A5FA'}],
+      'UA',[{label:'Carga (UA)',color:'#60A5FA'}]) +
+    makeChart('ACWR', labels,
+      [{data:acwrData,color:'#ffab00'}],
+      '',[{label:'ACWR',color:'#ffab00'}]);
+}
+
+async function renderEvolucaoAvaliacao(athleteId, container) {
+  const { data: avs } = await supa.from('functional_assessments')
+    .select('*').eq('athleteId', athleteId).order('data',{ascending:true});
+
+  if (!avs?.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🏃</div><h3>Sem avaliações funcionais</h3></div>`;
+    return;
+  }
+  const labels = avs.map(a => a.data);
+
+  // Comparison selector if more than 1 evaluation
+  const compHTML = avs.length >= 2 ? `
+    <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--branco);margin-bottom:12px;">🔄 Comparar duas avaliações</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div>
+          <label style="font-size:11px;color:var(--cinza-texto);display:block;margin-bottom:4px;">Avaliação 1</label>
+          <select id="comp-av1" class="form-control" style="width:180px;">
+            ${avs.map((a,i)=>`<option value="${i}">${formatDate(a.data)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--cinza-texto);display:block;margin-bottom:4px;">Avaliação 2</label>
+          <select id="comp-av2" class="form-control" style="width:180px;">
+            ${avs.map((a,i)=>`<option value="${i}" ${i===avs.length-1?'selected':''}>${formatDate(a.data)}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="renderComparacao(${JSON.stringify(avs).replace(/"/g,'&quot;')})">Comparar</button>
+      </div>
+      <div id="comp-resultado" style="margin-top:16px;"></div>
+    </div>` : '';
+
+  container.innerHTML = compHTML +
+    makeChart('LSI — Side Hop, SLH e Preensão Palmar (%)', labels,
+      [{data:avs.map(a=>a.side_hop_lsi||null),color:'#e0282e'},
+       {data:avs.map(a=>a.slh_lsi||null),color:'#00c853'},
+       {data:avs.map(a=>a.grip_lsi||null),color:'#60A5FA'}],
+      '%',[{label:'Side Hop LSI',color:'#e0282e'},{label:'SLH LSI',color:'#00c853'},{label:'Grip LSI',color:'#60A5FA'}]) +
+    makeChart('Y-Balance Composto D e E (%)', labels,
+      [{data:avs.map(a=>a.ybt_composto_d||null),color:'#ffab00'},
+       {data:avs.map(a=>a.ybt_composto_e||null),color:'#a78bfa'}],
+      '%',[{label:'Composto D',color:'#ffab00'},{label:'Composto E',color:'#a78bfa'}]) +
+    makeChart('Flexibilidade Isquiossurais (°)', labels,
+      [{data:avs.map(a=>a.isquio_d||null),color:'#e0282e'},
+       {data:avs.map(a=>a.isquio_e||null),color:'#60A5FA'}],
+      '°',[{label:'Isquio D',color:'#e0282e'},{label:'Isquio E',color:'#60A5FA'}]);
+}
+
+window.renderEvolucao = renderEvolucao;
+
+window.renderComparacao = function(avs) {
+  const i1 = parseInt(document.getElementById('comp-av1').value);
+  const i2 = parseInt(document.getElementById('comp-av2').value);
+  if (i1 === i2) { document.getElementById('comp-resultado').innerHTML = '<p style="color:var(--cinza-texto);font-size:13px;">Selecione duas avaliações diferentes.</p>'; return; }
+
+  const a1 = avs[i1], a2 = avs[i2];
+  const d1 = formatDate(a1.data), d2 = formatDate(a2.data);
+
+  function compRow(label, v1d, v1e, v2d, v2e, unit='', lsi1=null, lsi2=null) {
+    if (!v1d && !v1e && !v2d && !v2e) return '';
+    const delta = (v1, v2) => {
+      if (v1===null || v2===null) return '';
+      const d = (v2-v1);
+      const color = d > 0 ? '#00c853' : d < 0 ? '#e0282e' : '#8a909e';
+      return `<span style="color:${color};font-size:11px;">${d>0?'+':''}${d.toFixed(1)}${unit}</span>`;
+    };
+    return `<tr>
+      <td style="padding:7px 10px;font-size:12px;color:var(--cinza-texto);">${label}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:12px;">${v1d!==null?v1d+unit:'—'} / ${v1e!==null?v1e+unit:'—'}${lsi1?` <span style="font-size:10px;color:var(--cinza-texto);">(${lsi1}%)</span>`:''}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:12px;">${v2d!==null?v2d+unit:'—'} / ${v2e!==null?v2e+unit:'—'}${lsi2?` <span style="font-size:10px;color:var(--cinza-texto);">(${lsi2}%)</span>`:''}</td>
+      <td style="padding:7px 10px;text-align:center;">${delta(v1d,v2d)} / ${delta(v1e,v2e)}</td>
+    </tr>`;
+  }
+
+  document.getElementById('comp-resultado').innerHTML = `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--cinza-borda);">
+            <th style="padding:8px 10px;text-align:left;color:var(--cinza-texto);font-size:11px;text-transform:uppercase;">Teste</th>
+            <th style="padding:8px 10px;text-align:center;color:var(--acento);font-size:11px;">${d1} (D/E)</th>
+            <th style="padding:8px 10px;text-align:center;color:#60A5FA;font-size:11px;">${d2} (D/E)</th>
+            <th style="padding:8px 10px;text-align:center;color:var(--cinza-texto);font-size:11px;">Δ Evolução</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${compRow('Side Hop (s)', a1.side_hop_d_best, a1.side_hop_e_best, a2.side_hop_d_best, a2.side_hop_e_best, ' s', a1.side_hop_lsi, a2.side_hop_lsi)}
+          ${compRow('Single Leg Hop (m)', a1.slh_d_best, a1.slh_e_best, a2.slh_d_best, a2.slh_e_best, ' m', a1.slh_lsi, a2.slh_lsi)}
+          ${compRow('Preensão Palmar (kgf)', a1.grip_d_best, a1.grip_e_best, a2.grip_d_best, a2.grip_e_best, ' kgf', a1.grip_lsi, a2.grip_lsi)}
+          ${compRow('Lunge Test (°)', a1.lunge_d, a1.lunge_e, a2.lunge_d, a2.lunge_e, '°')}
+          ${compRow('Isquiossurais (°)', a1.isquio_d, a1.isquio_e, a2.isquio_d, a2.isquio_e, '°')}
+          ${compRow('Thomas Iliopsoas (°)', a1.thomas_iliopsoas_d, a1.thomas_iliopsoas_e, a2.thomas_iliopsoas_d, a2.thomas_iliopsoas_e, '°')}
+          ${compRow('Thomas Reto Femoral (°)', a1.thomas_reto_d, a1.thomas_reto_e, a2.thomas_reto_d, a2.thomas_reto_e, '°')}
+          ${compRow('Y-Balance Composto', a1.ybt_composto_d, a1.ybt_composto_e, a2.ybt_composto_d, a2.ybt_composto_e, '%', a1.ybt_lsi, a2.ybt_lsi)}
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:var(--cinza-texto);margin-top:8px;">🟢 melhora &nbsp; 🔴 piora &nbsp; — sem alteração &nbsp;|&nbsp; Δ = diferença em relação à avaliação anterior</div>
+    </div>`;
+};
+
+// ── EXPORTAR PDF DA AVALIAÇÃO FUNCIONAL ──────────────────────
+window.exportAvaliacaoPDF = async function(id) {
+  showToast('📄 Gerando PDF...');
+  const { data: r } = await supa.from('functional_assessments').select('*').eq('id', id).single();
+  if (!r) return;
+  const a = await dbGet('athletes', r.athleteId);
+  const hoje = new Date().toLocaleDateString('pt-BR');
+
+  function row(label, vd, ve, unit='') {
+    if (!vd && !ve) return '';
+    return `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">${label}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:600;">${vd !== null && vd !== undefined ? vd+unit : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:600;">${ve !== null && ve !== undefined ? ve+unit : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;"></td></tr>`;
+  }
+  function rowLSI(label, vd, ve, lsi, unit='') {
+    if (!vd && !ve) return '';
+    const lsiColor = lsi >= 90 ? '#00c853' : lsi >= 80 ? '#ff8c00' : '#e0282e';
+    return `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">${label}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:600;">${vd !== null ? vd+unit : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:600;">${ve !== null ? ve+unit : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:700;color:${lsiColor};">${lsi ? lsi+'%' : '—'}</td></tr>`;
+  }
+  function rowSingle(label, val, unit='') {
+    if (!val) return '';
+    return `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">${label}</td>
+      <td colspan="3" style="padding:6px 10px;font-weight:600;">${val}${unit}</td></tr>`;
+  }
+  function tentativas(d1,d2,d3,e1,e2,e3,unit='') {
+    return `D: ${d1||'—'} / ${d2||'—'} / ${d3||'—'} ${unit} &nbsp;&nbsp; E: ${e1||'—'} / ${e2||'—'} / ${e3||'—'} ${unit}`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Avaliação Funcional — ${a?.apelido||a?.nome||'Atleta'}</title>
+<style>
+  * { margin:0;padding:0;box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif;color:#222;padding:28px;font-size:13px; }
+  .header { display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #e0282e;padding-bottom:14px;margin-bottom:20px; }
+  .header h1 { font-size:20px;color:#e0282e;text-transform:uppercase;letter-spacing:1px; }
+  .header p { font-size:11px;color:#888;margin-top:2px; }
+  .athlete-info { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-bottom:20px; }
+  .info-lbl { font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px; }
+  .info-val { font-size:13px;font-weight:600; }
+  .section { margin-bottom:18px; }
+  .section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#e0282e;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:5px; }
+  table { width:100%;border-collapse:collapse; }
+  th { font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;padding:6px 10px;text-align:center;border-bottom:2px solid #eee; }
+  th:first-child { text-align:left; }
+  tr:nth-child(even) { background:#fafafa; }
+  .tent { font-size:10px;color:#999;padding:2px 10px 6px; }
+  @media print { body{padding:12px;} @page{margin:1cm;} }
+</style></head><body>
+<div class="header">
+  <div>
+    <h1>AC Paranavaí — Avaliação Funcional</h1>
+    <p>Departamento de Fisioterapia Esportiva</p>
+  </div>
+  <div style="text-align:right;font-size:11px;color:#888;">
+    <div>Data avaliação: <strong>${r.data ? new Date(r.data+'T12:00').toLocaleDateString('pt-BR') : '—'}</strong></div>
+    <div>Emitido em: ${hoje}</div>
+  </div>
+</div>
+
+<div class="athlete-info">
+  <div><div class="info-lbl">Atleta</div><div class="info-val">${a?.apelido||a?.nome||'—'}</div></div>
+  <div><div class="info-lbl">Posição</div><div class="info-val">${r.posicao||'—'}</div></div>
+  <div><div class="info-lbl">Peso / Altura</div><div class="info-val">${r.peso||'—'} kg / ${r.altura||'—'} m</div></div>
+  <div><div class="info-lbl">Idade</div><div class="info-val">${r.idade||'—'} anos</div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Dados Antropométricos e Testes Simples</div>
+  <table>
+    <tr><th>Teste</th><th>Direito</th><th>Esquerdo</th><th>LSI</th></tr>
+    ${rowSingle('Comprimento de MMII (cm)', r.mmii_d ? `D: ${r.mmii_d} cm / E: ${r.mmii_e||'—'} cm` : null)}
+    ${row('5" Squeeze Test (dor 0-10)', r.squeeze_d, r.squeeze_e)}
+    ${row('Lunge Test (°)', r.lunge_d, r.lunge_e, '°')}
+    ${rowSingle('Flexibilidade Isquiossurais (°)', r.isquio_d ? `D: ${r.isquio_d}° / E: ${r.isquio_e||'—'}°` : null)}
+    ${rowSingle('Thomas — Iliopsoas (°)', r.thomas_iliopsoas_d !== null ? `D: ${r.thomas_iliopsoas_d||'—'}° / E: ${r.thomas_iliopsoas_e||'—'}°` : null)}
+    ${rowSingle('Thomas — Reto Femoral (°)', r.thomas_reto_d !== null ? `D: ${r.thomas_reto_d||'—'}° / E: ${r.thomas_reto_e||'—'}°` : null)}
+    ${rowSingle('Nordic Hamstring bilateral (°)', r.nordic_d ? `${r.nordic_d}°` : null)}
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Testes de Performance — Melhores Tentativas e LSI</div>
+  <table>
+    <tr><th>Teste</th><th>Direito</th><th>Esquerdo</th><th>LSI</th></tr>
+    ${rowLSI('Side Hop Test — melhor (s)', r.side_hop_d_best, r.side_hop_e_best, r.side_hop_lsi, ' s')}
+    ${rowLSI('Single Leg Hop Test — melhor (m)', r.slh_d_best, r.slh_e_best, r.slh_lsi, ' m')}
+    ${rowLSI('Preensão Palmar — melhor (kgf)', r.grip_d_best, r.grip_e_best, r.grip_lsi, ' kgf')}
+  </table>
+</div>
+
+${r.side_hop_d1||r.slh_d1||r.grip_d1 ? `
+<div class="section">
+  <div class="section-title">Tentativas Individuais</div>
+  <table>
+    <tr><th>Teste</th><th colspan="3">Tentativas (D1/D2/D3 — E1/E2/E3)</th></tr>
+    ${r.side_hop_d1 ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Side Hop (s)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.side_hop_d1,r.side_hop_d2,r.side_hop_d3,r.side_hop_e1,r.side_hop_e2,r.side_hop_e3,'s')}</td></tr>` : ''}
+    ${r.slh_d1 ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Single Leg Hop (m)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.slh_d1,r.slh_d2,r.slh_d3,r.slh_e1,r.slh_e2,r.slh_e3,'m')}</td></tr>` : ''}
+    ${r.grip_d1 ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Preensão Palmar (kgf)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.grip_d1,r.grip_d2,r.grip_d3,r.grip_e1,r.grip_e2,r.grip_e3,'kgf')}</td></tr>` : ''}
+  </table>
+</div>` : ''}
+
+${r.ybt_composto_d||r.ybt_composto_e ? `
+<div class="section">
+  <div class="section-title">Y-Balance Test</div>
+  <table>
+    <tr><th>Direção</th><th>Melhor D (cm)</th><th>Melhor E (cm)</th></tr>
+    ${r.ybt_ant_d_best||r.ybt_ant_e_best ? `<tr><td style="padding:6px 10px;color:#555;">Anterior</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_ant_d_best||'—'}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_ant_e_best||'—'}</td></tr>` : ''}
+    ${r.ybt_pm_d_best||r.ybt_pm_e_best ? `<tr><td style="padding:6px 10px;color:#555;">Posteromedial</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pm_d_best||'—'}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pm_e_best||'—'}</td></tr>` : ''}
+    ${r.ybt_pl_d_best||r.ybt_pl_e_best ? `<tr><td style="padding:6px 10px;color:#555;">Posterolateral</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pl_d_best||'—'}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pl_e_best||'—'}</td></tr>` : ''}
+    <tr style="background:#f0f0f0;"><td style="padding:8px 10px;font-weight:700;">Escore Composto</td>
+      <td style="text-align:center;padding:8px 10px;font-weight:700;">${r.ybt_composto_d||'—'}%</td>
+      <td style="text-align:center;padding:8px 10px;font-weight:700;">${r.ybt_composto_e||'—'}%</td></tr>
+    <tr><td style="padding:6px 10px;color:#555;">LSI Y-Balance</td>
+      <td colspan="2" style="text-align:center;padding:6px 10px;font-weight:700;color:${r.ybt_lsi>=90?'#00c853':r.ybt_lsi>=80?'#ff8c00':'#e0282e'};">${r.ybt_lsi||'—'}%</td></tr>
+  </table>
+</div>` : ''}
+
+${r.observacoes ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:12px;color:#555;line-height:1.6;">${r.observacoes}</p></div>` : ''}
+
+<div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;font-size:11px;color:#888;">
+  <div style="border-top:1px solid #ccc;padding-top:8px;">Fisioterapeuta responsável / Assinatura / CREFITO</div>
+  <div style="border-top:1px solid #ccc;padding-top:8px;">Atleta / Assinatura</div>
+</div>
+</body></html>`;
+
+  let iframe = document.getElementById('pdf-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'pdf-iframe';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;';
+    document.body.appendChild(iframe);
+  }
+  iframe.srcdoc = html;
+  iframe.onload = () => setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 600);
+};
 window.exportAthletePDF = async function(athleteId) {
   showToast('📄 Gerando PDF...');
 
