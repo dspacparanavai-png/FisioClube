@@ -928,7 +928,7 @@ body.dark-mode #topbar {
       <span class="icon">📈</span> Evolução
     </button>
     <button class="nav-item" onclick="showSection('fisios')">
-      <span class="icon">🧑‍⚕️</span> Fisioterapeutas
+      <span class="icon">👥</span> Comissão Técnica
     </button>
 
   </nav>
@@ -1040,7 +1040,7 @@ body.dark-mode #topbar {
 
     <div class="view" id="view-fisios">
   <div style="margin-bottom:20px;">
-    <button class="btn btn-primary" onclick="openPhysioModal()">+ Novo Fisioterapeuta</button>
+    <button class="btn btn-primary" onclick="openPhysioModal()">+ Novo Membro</button>
   </div>
   <div id="fisios-list"></div>
 </div>
@@ -1494,7 +1494,7 @@ body.dark-mode #topbar {
 
 <div class="modal-overlay" id="modal-physio">
   <div class="modal">
-    <h3 id="modal-physio-title">Novo Fisioterapeuta</h3>
+    <h3 id="modal-physio-title">Novo Membro</h3>
     <div class="form-group">
       <label>Nome completo</label>
       <input class="form-control" id="p-nome" placeholder="Nome do profissional">
@@ -1502,12 +1502,16 @@ body.dark-mode #topbar {
     <div class="form-group">
       <label>Tipo</label>
       <select class="form-control" id="p-tipo" onchange="pTipoChange()">
-        <option value="profissional">Fisioterapeuta Profissional</option>
+        <option value="fisioterapeuta">Fisioterapeuta</option>
+        <option value="nutricionista">Nutricionista</option>
+        <option value="preparador">Preparador Físico</option>
+        <option value="medico">Médico</option>
         <option value="estagiario">Estagiário</option>
+        <option value="outro">Outro</option>
       </select>
     </div>
     <div class="form-group" id="p-crefito-group">
-      <label>CREFITO-8</label>
+      <label id="p-registro-label">CREFITO-8</label>
       <input class="form-control" id="p-crefito" placeholder="Ex: 12345-F">
     </div>
     <div class="form-group" id="p-ra-group" style="display:none;">
@@ -1748,10 +1752,13 @@ body.dark-mode #topbar {
 
     <!-- Dados do atleta -->
     <div style="background:var(--cinza-fundo);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Peso</div><div id="nut-info-peso" style="font-weight:600;">—</div></div>
-      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Altura</div><div id="nut-info-altura" style="font-weight:600;">—</div></div>
-      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Idade</div><div id="nut-info-idade" style="font-weight:600;">—</div></div>
-      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Posição</div><div id="nut-info-posicao" style="font-weight:600;">—</div></div>
+      <div>
+        <div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Peso atual (kg)</div>
+        <input type="number" step="0.1" class="form-control" id="nut-peso-atual" placeholder="Ex: 80.5" oninput="nutCalc()" style="padding:4px 8px;font-size:13px;">
+      </div>
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Altura</div><div id="nut-info-altura" style="font-weight:600;margin-top:6px;">—</div></div>
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Idade</div><div id="nut-info-idade" style="font-weight:600;margin-top:6px;">—</div></div>
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Posição</div><div id="nut-info-posicao" style="font-weight:600;margin-top:6px;">—</div></div>
     </div>
 
     <!-- Fórmula e equação -->
@@ -2037,7 +2044,7 @@ function showSection(section) {
     atletas: 'Atletas',
     hoje: 'Atendimentos Hoje',
     historico: 'Histórico Geral',
-    fisios: 'Fisioterapeutas',
+    fisios: 'Comissão Técnica',
     monitoramento: 'Monitoramento',
     avaliacao: 'Avaliação Funcional',
     nutricional: 'Avaliação Nutricional',
@@ -2814,42 +2821,98 @@ async function renderFisios(){
   const fisios = await dbGetAll('physios');
   const el = document.getElementById('fisios-list');
   if(!el) return;
+
+  // Update button label
+  const btnNovo = el.previousElementSibling?.querySelector?.('button');
+
   if(!fisios.length) {
-    el.innerHTML = `<div class="empty-state"><div class="icon">🧑‍⚕️</div><h3>Nenhum profissional cadastrado</h3></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="icon">👥</div><h3>Nenhum membro cadastrado</h3></div>`;
     return;
   }
-  el.innerHTML = fisios.map(f => {
-    const tipo = f.tipo === 'estagiario' ? 'Estagiário' : 'Fisioterapeuta';
-    const registro = f.tipo === 'estagiario'
-      ? (f.ra ? `RA: ${f.ra}` : '')
-      : (f.crefito ? `CREFITO-8: ${f.crefito}` : '');
-    const badge = f.tipo === 'estagiario'
-      ? `<span style="background:rgba(96,165,250,0.15);color:#60A5FA;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">Estagiário</span>`
-      : `<span style="background:rgba(0,200,83,0.15);color:#00c853;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">Profissional</span>`;
-    return `
-      <div class="session-entry" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div>
-          <div style="font-weight:600;font-size:14px;">${escapeHtml(f.nome)} ${badge}</div>
-          ${registro ? `<div style="font-size:12px;color:var(--cinza-texto);margin-top:2px;">${registro}</div>` : ''}
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deletePhysio(${f.id})">Excluir</button>
-      </div>`;
-  }).join('');
+
+  const tipoLabel = {
+    fisioterapeuta: 'Fisioterapeuta',
+    nutricionista: 'Nutricionista',
+    preparador: 'Preparador Físico',
+    medico: 'Médico',
+    estagiario: 'Estagiário',
+    profissional: 'Fisioterapeuta', // retrocompatibilidade
+    outro: 'Outro'
+  };
+  const tipoColor = {
+    fisioterapeuta: '#00c853', nutricionista: '#60A5FA',
+    preparador: '#ffab00', medico: '#a78bfa',
+    estagiario: '#8a909e', profissional: '#00c853', outro: '#8a909e'
+  };
+  const registroLabel = {
+    fisioterapeuta: 'CREFITO-8', nutricionista: 'CRN',
+    preparador: 'CREF', medico: 'CRM',
+    profissional: 'CREFITO-8'
+  };
+
+  // Group by tipo
+  const grupos = {};
+  fisios.forEach(f => {
+    const t = f.tipo || 'fisioterapeuta';
+    if (!grupos[t]) grupos[t] = [];
+    grupos[t].push(f);
+  });
+
+  el.innerHTML = Object.entries(grupos).map(([tipo, membros]) => `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${tipoColor[tipo]||'#8a909e'};margin-bottom:10px;">${tipoLabel[tipo]||tipo}S</div>
+      ${membros.map(f => {
+        const reg = f.tipo === 'estagiario' ? (f.ra ? `RA: ${f.ra}` : '') : (f.crefito ? `${registroLabel[f.tipo]||'Registro'}: ${f.crefito}` : '');
+        const badge = `<span style="background:${tipoColor[f.tipo]||'#8a909e'}22;color:${tipoColor[f.tipo]||'#8a909e'};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${tipoLabel[f.tipo]||f.tipo}</span>`;
+        return `
+        <div class="session-entry" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
+          <div>
+            <div style="font-weight:600;font-size:14px;">${escapeHtml(f.nome)} ${badge}</div>
+            ${reg ? `<div style="font-size:12px;color:var(--cinza-texto);margin-top:2px;">${reg}</div>` : ''}
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deletePhysio(${f.id})">Excluir</button>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
 }
 
 function pTipoChange() {
   const tipo = document.getElementById('p-tipo').value;
-  document.getElementById('p-crefito-group').style.display = tipo === 'profissional' ? 'block' : 'none';
-  document.getElementById('p-ra-group').style.display = tipo === 'estagiario' ? 'block' : 'none';
+  const registroGroup = document.getElementById('p-crefito-group');
+  const raGroup = document.getElementById('p-ra-group');
+  const registroLabel = document.getElementById('p-registro-label');
+  const registroInput = document.getElementById('p-crefito');
+
+  raGroup.style.display = tipo === 'estagiario' ? 'block' : 'none';
+
+  if (tipo === 'fisioterapeuta') {
+    registroGroup.style.display = 'block';
+    registroLabel.textContent = 'CREFITO-8';
+    registroInput.placeholder = 'Ex: 12345-F';
+  } else if (tipo === 'nutricionista') {
+    registroGroup.style.display = 'block';
+    registroLabel.textContent = 'CRN';
+    registroInput.placeholder = 'Ex: 12345';
+  } else if (tipo === 'medico') {
+    registroGroup.style.display = 'block';
+    registroLabel.textContent = 'CRM';
+    registroInput.placeholder = 'Ex: 12345';
+  } else if (tipo === 'preparador') {
+    registroGroup.style.display = 'block';
+    registroLabel.textContent = 'CREF';
+    registroInput.placeholder = 'Ex: 012345-G/PR';
+  } else {
+    registroGroup.style.display = 'none';
+  }
 }
 
 function openPhysioModal(){
   document.getElementById('p-nome').value = '';
-  document.getElementById('p-tipo').value = 'profissional';
+  document.getElementById('p-tipo').value = 'fisioterapeuta';
   document.getElementById('p-crefito').value = '';
   document.getElementById('p-ra').value = '';
-  document.getElementById('p-crefito-group').style.display = 'block';
-  document.getElementById('p-ra-group').style.display = 'none';
+  document.getElementById('modal-physio-title').textContent = 'Novo Membro da Comissão';
+  pTipoChange();
   openModal('modal-physio');
 }
 
@@ -2882,10 +2945,15 @@ async function loadPhysiosSelect(){
   const fisios = await dbGetAll('physios');
   const sel = document.getElementById('a-physio');
   if(!sel) return;
+  const tipoSuffix = {
+    fisioterapeuta: '', profissional: '',
+    nutricionista: ' (Nutr.)', preparador: ' (Prep.)',
+    medico: ' (Méd.)', estagiario: ' (Est.)', outro: ''
+  };
   sel.innerHTML = '<option value="">Selecione...</option>' +
     fisios.map(f => {
-      const label = f.tipo === 'estagiario' ? `${f.nome} (Est.)` : f.nome;
-      return `<option value="${f.id}">${label}</option>`;
+      const suffix = tipoSuffix[f.tipo] || '';
+      return `<option value="${f.id}">${f.nome}${suffix}</option>`;
     }).join('');
 }
 
@@ -3797,13 +3865,14 @@ async function nutPreencherDados() {
   const id = parseInt(document.getElementById('nut-atleta').value);
   if (!id) { nutAtletaCache = null; return; }
 
-  // Busca nos atletas já carregados na categoria atual
   const athletes = await getAthletesByCat();
   const a = athletes.find(at => at.id === id);
   if (!a) return;
 
   nutAtletaCache = a;
-  document.getElementById('nut-info-peso').textContent = a.peso ? a.peso + ' kg' : '—';
+  // Preenche peso atual com o do cadastro (editável pelo usuário)
+  const pesoEl = document.getElementById('nut-peso-atual');
+  if (pesoEl && a.peso) pesoEl.value = a.peso;
   document.getElementById('nut-info-altura').textContent = a.altura ? a.altura + ' m' : '—';
   const idade = a.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
   document.getElementById('nut-info-idade').textContent = idade ? idade + ' anos' : '—';
@@ -3815,7 +3884,8 @@ function nutCalc() {
   const g = id => parseFloat(document.getElementById(id)?.value) || null;
   const formula = document.getElementById('nut-formula')?.value || 'JP7';
   const equacao = document.getElementById('nut-equacao')?.value || 'siri';
-  const peso = nutAtletaCache ? parseFloat(nutAtletaCache.peso) : null;
+  // Usa peso do campo editável do formulário
+  const peso = parseFloat(document.getElementById('nut-peso-atual')?.value) || (nutAtletaCache ? parseFloat(nutAtletaCache.peso) : null);
   const a = nutAtletaCache;
   const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
 
@@ -3895,7 +3965,8 @@ window.openNutricionalModal = async function(id) {
   document.getElementById('nut-equacao').value = 'siri';
   document.getElementById('nut-resultado').style.display = 'none';
   document.getElementById('nut-rcq').textContent = '—';
-  ['nut-info-peso','nut-info-altura','nut-info-idade','nut-info-posicao'].forEach(k => {
+  document.getElementById('nut-peso-atual').value = '';
+  ['nut-info-altura','nut-info-idade','nut-info-posicao'].forEach(k => {
     document.getElementById(k).textContent = '—';
   });
 
@@ -3923,7 +3994,8 @@ window.saveNutricional = async function() {
     const formula = document.getElementById('nut-formula').value;
     const equacao = document.getElementById('nut-equacao').value;
     const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 10;
-    const peso = a ? parseFloat(a.peso) : null;
+    // Peso do campo editável do formulário (pode ser diferente do cadastro)
+    const peso = parseFloat(document.getElementById('nut-peso-atual')?.value) || (a ? parseFloat(a.peso) : null);
 
     const peit=g('nut-peitoral'), axil=g('nut-axilar'), tric=g('nut-triceps');
     const sube=g('nut-subescapular'), supr=g('nut-suprailiaca');
@@ -3974,6 +4046,25 @@ window.saveNutricional = async function() {
     showToast('✅ Avaliação nutricional salva!');
     closeModal('modal-nutricional');
     renderNutricional();
+
+    // Verificar se o peso mudou e oferecer atualização no cadastro
+    if (peso && nutAtletaCache) {
+      const pesoAtual = parseFloat(nutAtletaCache.peso);
+      const pesoNovo = peso;
+      if (Math.abs(pesoNovo - pesoAtual) >= 0.1) {
+        setTimeout(() => {
+          if (confirm(`O peso registrado nesta avaliação (${pesoNovo} kg) é diferente do cadastro atual (${pesoAtual} kg).\n\nDeseja atualizar o peso no cadastro do atleta?`)) {
+            supa.from('athletes').update({
+              peso: String(pesoNovo),
+              imc: parseFloat(a.altura) > 0 ? (pesoNovo / (parseFloat(a.altura) ** 2)).toFixed(1) : nutAtletaCache.imc,
+              updatedAt: new Date().toISOString()
+            }).eq('id', athleteId).then(() => {
+              showToast(`✅ Peso atualizado para ${pesoNovo} kg no cadastro!`);
+            });
+          }
+        }, 400);
+      }
+    }
   } catch(e) {
     console.error(e);
     showToast('Erro ao salvar. Tente novamente.');
@@ -4000,6 +4091,7 @@ window.editNutricional = async function(id) {
 
   const s = (fid, val) => { const el=document.getElementById(fid); if(el&&val!==null&&val!==undefined) el.value=val; };
   s('nut-data', r.data);
+  s('nut-peso-atual', r.peso);
   s('nut-formula', r.formula||'JP7');
   s('nut-equacao', r.equacao||'siri');
   s('nut-pgordura-ideal', r.percentual_gordura_ideal||10);
