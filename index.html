@@ -921,6 +921,9 @@ body.dark-mode #topbar {
     <button class="nav-item" onclick="showSection('avaliacao')">
       <span class="icon">🏃</span> Aval. Funcional
     </button>
+    <button class="nav-item" onclick="showSection('nutricional')">
+      <span class="icon">🥗</span> Aval. Nutricional
+    </button>
     <button class="nav-item" onclick="showSection('evolucao')">
       <span class="icon">📈</span> Evolução
     </button>
@@ -1069,6 +1072,20 @@ body.dark-mode #topbar {
       <div id="av-lista"></div>
     </div>
 
+    <!-- AVALIAÇÃO NUTRICIONAL -->
+    <div class="view" id="view-nutricional">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <label style="font-size:13px;color:var(--cinza-texto);">Atleta:</label>
+          <select id="nut-filtro-atleta" class="form-control" style="width:220px;" onchange="renderNutricional()">
+            <option value="">Todos os atletas</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="openNutricionalModal()">+ Nova Avaliação</button>
+      </div>
+      <div id="nut-lista"></div>
+    </div>
+
     <!-- EVOLUÇÃO -->
     <div class="view" id="view-evolucao">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
@@ -1083,6 +1100,7 @@ body.dark-mode #topbar {
           <select id="ev-tipo" class="form-control" onchange="renderEvolucao()">
             <option value="monitoramento">📊 Wellness & Carga</option>
             <option value="avaliacao">🏃 Avaliação Funcional</option>
+            <option value="nutricional">🥗 Avaliação Nutricional</option>
           </select>
         </div>
       </div>
@@ -1709,6 +1727,126 @@ body.dark-mode #topbar {
   </div>
 </div>
 
+<!-- MODAL AVALIAÇÃO NUTRICIONAL -->
+<div class="modal-overlay" id="modal-nutricional">
+  <div class="modal" style="max-width:680px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-header">
+      <h3>🥗 Avaliação Nutricional</h3>
+      <button class="modal-close" onclick="closeModal('modal-nutricional')">✕</button>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Atleta</label>
+        <select class="form-control" id="nut-atleta" onchange="nutPreencherDados()"></select>
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" class="form-control" id="nut-data">
+      </div>
+    </div>
+
+    <!-- Dados do atleta -->
+    <div style="background:var(--cinza-fundo);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Peso</div><div id="nut-info-peso" style="font-weight:600;">—</div></div>
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Altura</div><div id="nut-info-altura" style="font-weight:600;">—</div></div>
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Idade</div><div id="nut-info-idade" style="font-weight:600;">—</div></div>
+      <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Posição</div><div id="nut-info-posicao" style="font-weight:600;">—</div></div>
+    </div>
+
+    <!-- Fórmula e equação -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⚙️ Fórmula e Equação</div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>Fórmula de Densidade</label>
+        <select class="form-control" id="nut-formula" onchange="nutCalc()">
+          <option value="JP7">Jackson & Pollock 7 dobras</option>
+          <option value="JP3">Jackson & Pollock 3 dobras</option>
+          <option value="faulkner">Faulkner 4 dobras</option>
+          <option value="deurenberg">Deurenberg (IMC)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Equação % Gordura</label>
+        <select class="form-control" id="nut-equacao" onchange="nutCalc()">
+          <option value="siri">Siri (1956)</option>
+          <option value="brozek">Brozek (1963)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Dobras cutâneas -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📏 Dobras Cutâneas (mm)</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+      <div class="form-group"><label style="font-size:11px;">Peitoral</label><input type="number" step="0.1" class="form-control" id="nut-peitoral" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Axilar Média</label><input type="number" step="0.1" class="form-control" id="nut-axilar" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Tríceps</label><input type="number" step="0.1" class="form-control" id="nut-triceps" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Subescapular</label><input type="number" step="0.1" class="form-control" id="nut-subescapular" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Suprailíaca</label><input type="number" step="0.1" class="form-control" id="nut-suprailiaca" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Abdominal</label><input type="number" step="0.1" class="form-control" id="nut-abdominal" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Coxa</label><input type="number" step="0.1" class="form-control" id="nut-coxa-dc" oninput="nutCalc()"></div>
+    </div>
+
+    <!-- Resultados calculados -->
+    <div id="nut-resultado" style="background:var(--cinza-fundo);border-radius:10px;padding:16px;margin-bottom:14px;display:none;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:12px;">📊 Composição Corporal (calculada automaticamente)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+        <div><div style="font-size:10px;color:var(--cinza-texto);">Soma Dobras</div><div id="nut-soma" style="font-size:20px;font-weight:700;color:var(--acento);">—</div><div style="font-size:10px;color:var(--cinza-texto);">mm</div></div>
+        <div><div style="font-size:10px;color:var(--cinza-texto);">Densidade</div><div id="nut-densidade" style="font-size:20px;font-weight:700;color:var(--acento);">—</div><div style="font-size:10px;color:var(--cinza-texto);">g/cm³</div></div>
+        <div><div style="font-size:10px;color:var(--cinza-texto);">% Gordura</div><div id="nut-pgordura" style="font-size:20px;font-weight:700;color:var(--acento);">—</div><div style="font-size:10px;color:var(--cinza-texto);">%</div></div>
+        <div><div style="font-size:10px;color:var(--cinza-texto);">Massa Gorda</div><div id="nut-mgorda" style="font-size:20px;font-weight:700;">—</div><div style="font-size:10px;color:var(--cinza-texto);">kg</div></div>
+        <div><div style="font-size:10px;color:var(--cinza-texto);">Massa Magra</div><div id="nut-mmagra" style="font-size:20px;font-weight:700;">—</div><div style="font-size:10px;color:var(--cinza-texto);">kg</div></div>
+        <div><div style="font-size:10px;color:var(--cinza-texto);">Peso Ideal</div><div id="nut-pesoidal" style="font-size:20px;font-weight:700;color:#00c853;">—</div><div style="font-size:10px;color:var(--cinza-texto);">kg</div></div>
+      </div>
+      <div style="margin-top:10px;text-align:center;font-size:11px;color:var(--cinza-texto);">% gordura ideal para futebol (esportistas): <strong>8–12%</strong></div>
+    </div>
+
+    <!-- Percentual ideal customizável -->
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>% Gordura ideal (para cálculo do peso ideal)</label>
+        <input type="number" step="0.1" min="1" max="25" value="10" class="form-control" id="nut-pgordura-ideal" oninput="nutCalc()" placeholder="Ex: 10">
+      </div>
+    </div>
+
+    <!-- Circunferências -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Circunferências (cm)</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      <div class="form-group"><label style="font-size:11px;">Cintura</label><input type="number" step="0.1" class="form-control" id="nut-cintura" oninput="nutCalcRCQ()"></div>
+      <div class="form-group"><label style="font-size:11px;">Quadril</label><input type="number" step="0.1" class="form-control" id="nut-quadril" oninput="nutCalcRCQ()"></div>
+      <div class="form-group"><label style="font-size:11px;">Braço D</label><input type="number" step="0.1" class="form-control" id="nut-braco-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Braço E</label><input type="number" step="0.1" class="form-control" id="nut-braco-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Coxa D</label><input type="number" step="0.1" class="form-control" id="nut-coxa-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Coxa E</label><input type="number" step="0.1" class="form-control" id="nut-coxa-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Panturrilha D</label><input type="number" step="0.1" class="form-control" id="nut-pant-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Panturrilha E</label><input type="number" step="0.1" class="form-control" id="nut-pant-e"></div>
+    </div>
+    <div style="background:var(--cinza-fundo);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;text-align:center;">
+      RCQ (Razão Cintura/Quadril): <strong id="nut-rcq" style="color:var(--acento);">—</strong>
+    </div>
+
+    <!-- Diâmetros ósseos -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦴 Diâmetros Ósseos (cm)</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      <div class="form-group"><label style="font-size:11px;">Úmero D</label><input type="number" step="0.01" class="form-control" id="nut-umero-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Úmero E</label><input type="number" step="0.01" class="form-control" id="nut-umero-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Fêmur D</label><input type="number" step="0.01" class="form-control" id="nut-femur-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Fêmur E</label><input type="number" step="0.01" class="form-control" id="nut-femur-e"></div>
+    </div>
+
+    <!-- Observações -->
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Observações</label>
+      <textarea class="form-control" id="nut-obs" placeholder="Orientações nutricionais, metas, observações..." style="min-height:80px;"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nutricional')">Cancelar</button>
+      <button class="btn btn-primary" id="nut-btn-save" onclick="saveNutricional()">Salvar Avaliação</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -1887,7 +2025,8 @@ function showSection(section) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
 
   const navMap = {
-    dashboard: 0, atletas: 1, hoje: 2, historico: 3, monitoramento: 4, avaliacao: 5, evolucao: 6, fisios: 7
+    dashboard: 0, atletas: 1, hoje: 2, historico: 3, monitoramento: 4,
+    avaliacao: 5, nutricional: 6, evolucao: 7, fisios: 8
   };
 
   document.querySelectorAll('.nav-item')[navMap[section] ?? 0].classList.add('active');
@@ -1901,6 +2040,7 @@ function showSection(section) {
     fisios: 'Fisioterapeutas',
     monitoramento: 'Monitoramento',
     avaliacao: 'Avaliação Funcional',
+    nutricional: 'Avaliação Nutricional',
     evolucao: 'Evolução'
   };
 
@@ -1917,6 +2057,7 @@ function showSection(section) {
   if (section === 'fisios') renderFisios();
   if (section === 'monitoramento') renderMonitoramento();
   if (section === 'avaliacao') renderAvaliacao();
+  if (section === 'nutricional') renderNutricional();
   if (section === 'evolucao') renderEvolucao();
 }
 
@@ -3646,7 +3787,398 @@ async function renderAvaliacao() {
     </div>`;
   }).join('');
 }
-// ── EVOLUÇÃO ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// -- AVALIAÇÃO NUTRICIONAL ------------------------------------
+// ══════════════════════════════════════════════════════════════
+
+let nutAtletaCache = null;
+
+async function nutPreencherDados() {
+  const id = parseInt(document.getElementById('nut-atleta').value);
+  if (!id) { nutAtletaCache = null; return; }
+
+  // Busca nos atletas já carregados na categoria atual
+  const athletes = await getAthletesByCat();
+  const a = athletes.find(at => at.id === id);
+  if (!a) return;
+
+  nutAtletaCache = a;
+  document.getElementById('nut-info-peso').textContent = a.peso ? a.peso + ' kg' : '—';
+  document.getElementById('nut-info-altura').textContent = a.altura ? a.altura + ' m' : '—';
+  const idade = a.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
+  document.getElementById('nut-info-idade').textContent = idade ? idade + ' anos' : '—';
+  document.getElementById('nut-info-posicao').textContent = a.posicao || '—';
+  nutCalc();
+}
+
+function nutCalc() {
+  const g = id => parseFloat(document.getElementById(id)?.value) || null;
+  const formula = document.getElementById('nut-formula')?.value || 'JP7';
+  const equacao = document.getElementById('nut-equacao')?.value || 'siri';
+  const peso = nutAtletaCache ? parseFloat(nutAtletaCache.peso) : null;
+  const a = nutAtletaCache;
+  const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
+
+  const peit = g('nut-peitoral'), axil = g('nut-axilar'), tric = g('nut-triceps');
+  const sube = g('nut-subescapular'), supr = g('nut-suprailiaca');
+  const abdo = g('nut-abdominal'), coxa = g('nut-coxa-dc');
+  const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 10;
+
+  let soma = null, densidade = null, pgordura = null;
+
+  if (formula === 'JP7' && peit&&axil&&tric&&sube&&supr&&abdo&&coxa && idade) {
+    soma = peit+axil+tric+sube+supr+abdo+coxa;
+    densidade = 1.112 - (0.00043499*soma) + (0.00000055*soma*soma) - (0.00028826*idade);
+  } else if (formula === 'JP3' && peit&&abdo&&coxa && idade) {
+    soma = peit+abdo+coxa;
+    densidade = 1.10938 - (0.0008267*soma) + (0.0000016*soma*soma) - (0.0002574*idade);
+  } else if (formula === 'faulkner' && tric&&sube&&supr&&abdo) {
+    soma = tric+sube+supr+abdo;
+    pgordura = (soma * 0.153) + 5.783;
+  } else if (formula === 'deurenberg' && a?.peso && a?.altura && idade) {
+    const imc = parseFloat(a.peso) / (parseFloat(a.altura) ** 2);
+    pgordura = (1.20 * imc) + (0.23 * idade) - 10.8 - 5.4;
+  }
+
+  if (densidade && !pgordura) {
+    if (equacao === 'siri') pgordura = (4.95/densidade - 4.50) * 100;
+    else pgordura = (4.57/densidade - 4.142) * 100;
+  }
+
+  const resEl = document.getElementById('nut-resultado');
+  if (!pgordura) { resEl.style.display = 'none'; return; }
+
+  pgordura = parseFloat(pgordura.toFixed(2));
+  const mgorda = peso ? parseFloat((peso * pgordura / 100).toFixed(2)) : null;
+  const mmagra = peso && mgorda ? parseFloat((peso - mgorda).toFixed(2)) : null;
+  const pesoIdeal = mmagra ? parseFloat((mmagra / (1 - pgIdeal/100)).toFixed(2)) : null;
+
+  document.getElementById('nut-soma').textContent = soma ? soma.toFixed(1) : '—';
+  document.getElementById('nut-densidade').textContent = densidade ? densidade.toFixed(4) : '—';
+  const pgColor = pgordura <= 12 ? '#00c853' : pgordura <= 17 ? '#ffab00' : '#e0282e';
+  document.getElementById('nut-pgordura').innerHTML = `<span style="color:${pgColor}">${pgordura}</span>`;
+  document.getElementById('nut-mgorda').textContent = mgorda ?? '—';
+  document.getElementById('nut-mmagra').textContent = mmagra ?? '—';
+  document.getElementById('nut-pesoidal').textContent = pesoIdeal ?? '—';
+  resEl.style.display = 'block';
+}
+
+function nutCalcRCQ() {
+  const cin = parseFloat(document.getElementById('nut-cintura')?.value);
+  const qua = parseFloat(document.getElementById('nut-quadril')?.value);
+  const el = document.getElementById('nut-rcq');
+  if (cin && qua) {
+    const rcq = (cin/qua).toFixed(2);
+    const color = parseFloat(rcq) < 0.9 ? '#00c853' : '#e0282e';
+    el.innerHTML = `<span style="color:${color}">${rcq}</span> ${parseFloat(rcq)<0.9?'✅ Normal':'⚠️ Elevado'}`;
+  } else {
+    el.textContent = '—';
+  }
+}
+
+window.openNutricionalModal = async function(id) {
+  const athletes = await getAthletesByCat();
+  const sel = document.getElementById('nut-atleta');
+  sel.innerHTML = '<option value="">Selecione o atleta...</option>' +
+    athletes.filter(a => a.status !== 'liberado')
+      .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
+      .map(a => `<option value="${a.id}">${a.apelido||a.nome}</option>`).join('');
+
+  document.getElementById('nut-data').value = new Date().toISOString().split('T')[0];
+  nutAtletaCache = null;
+
+  // Reset fields
+  const inputs = document.querySelectorAll('#modal-nutricional input[type="number"], #modal-nutricional textarea');
+  inputs.forEach(i => i.value = '');
+  document.getElementById('nut-pgordura-ideal').value = '10';
+  document.getElementById('nut-formula').value = 'JP7';
+  document.getElementById('nut-equacao').value = 'siri';
+  document.getElementById('nut-resultado').style.display = 'none';
+  document.getElementById('nut-rcq').textContent = '—';
+  ['nut-info-peso','nut-info-altura','nut-info-idade','nut-info-posicao'].forEach(k => {
+    document.getElementById(k).textContent = '—';
+  });
+
+  if (id) { sel.value = id; await nutPreencherDados(); }
+
+  const btn = document.getElementById('nut-btn-save');
+  btn.textContent = 'Salvar Avaliação';
+  btn.onclick = saveNutricional;
+
+  openModal('modal-nutricional');
+};
+
+window.saveNutricional = async function() {
+  const athleteId = parseInt(document.getElementById('nut-atleta').value);
+  const data = document.getElementById('nut-data').value;
+  if (!athleteId || !data) { showToast('Selecione atleta e data!'); return; }
+
+  const btn = document.getElementById('nut-btn-save');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  try {
+    const g = id => parseFloat(document.getElementById(id)?.value) || null;
+    const a = nutAtletaCache;
+    const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
+    const formula = document.getElementById('nut-formula').value;
+    const equacao = document.getElementById('nut-equacao').value;
+    const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 10;
+    const peso = a ? parseFloat(a.peso) : null;
+
+    const peit=g('nut-peitoral'), axil=g('nut-axilar'), tric=g('nut-triceps');
+    const sube=g('nut-subescapular'), supr=g('nut-suprailiaca');
+    const abdo=g('nut-abdominal'), coxa=g('nut-coxa-dc');
+
+    let soma=null, densidade=null, pgordura=null;
+    if (formula==='JP7'&&peit&&axil&&tric&&sube&&supr&&abdo&&coxa&&idade) {
+      soma=peit+axil+tric+sube+supr+abdo+coxa;
+      densidade=1.112-(0.00043499*soma)+(0.00000055*soma*soma)-(0.00028826*idade);
+    } else if (formula==='JP3'&&peit&&abdo&&coxa&&idade) {
+      soma=peit+abdo+coxa;
+      densidade=1.10938-(0.0008267*soma)+(0.0000016*soma*soma)-(0.0002574*idade);
+    } else if (formula==='faulkner'&&tric&&sube&&supr&&abdo) {
+      soma=tric+sube+supr+abdo;
+      pgordura=(soma*0.153)+5.783;
+    } else if (formula==='deurenberg'&&a?.peso&&a?.altura&&idade) {
+      const imc=parseFloat(a.peso)/(parseFloat(a.altura)**2);
+      pgordura=(1.20*imc)+(0.23*idade)-10.8-5.4;
+    }
+    if (densidade&&!pgordura) {
+      pgordura=equacao==='siri'?(4.95/densidade-4.50)*100:(4.57/densidade-4.142)*100;
+    }
+    pgordura = pgordura ? parseFloat(pgordura.toFixed(2)) : null;
+    const mgorda = peso&&pgordura ? parseFloat((peso*pgordura/100).toFixed(2)) : null;
+    const mmagra = peso&&mgorda ? parseFloat((peso-mgorda).toFixed(2)) : null;
+    const pesoIdeal = mmagra ? parseFloat((mmagra/(1-pgIdeal/100)).toFixed(2)) : null;
+    const cin=g('nut-cintura'), qua=g('nut-quadril');
+    const rcq = cin&&qua ? parseFloat((cin/qua).toFixed(3)) : null;
+
+    await supa.from('nutritional_assessments').insert({
+      athleteId, data, formula, equacao,
+      peso: peso||null, altura: a?.altura?parseFloat(a.altura):null, idade, posicao: a?.posicao||null,
+      dc_peitoral:peit, dc_axilar_media:axil, dc_triceps:tric,
+      dc_subescapular:sube, dc_suprailiaca:supr, dc_abdominal:abdo, dc_coxa:coxa,
+      soma_dobras:soma, densidade_corporal:densidade,
+      percentual_gordura:pgordura, massa_gorda:mgorda, massa_magra:mmagra,
+      peso_ideal:pesoIdeal, percentual_gordura_ideal:pgIdeal,
+      circ_cintura:cin, circ_quadril:qua, rcq,
+      circ_braco_d:g('nut-braco-d'), circ_braco_e:g('nut-braco-e'),
+      circ_coxa_d:g('nut-coxa-d'), circ_coxa_e:g('nut-coxa-e'),
+      circ_panturrilha_d:g('nut-pant-d'), circ_panturrilha_e:g('nut-pant-e'),
+      diam_umero_d:g('nut-umero-d'), diam_umero_e:g('nut-umero-e'),
+      diam_femur_d:g('nut-femur-d'), diam_femur_e:g('nut-femur-e'),
+      observacoes:document.getElementById('nut-obs').value.trim()||null,
+      createdAt: new Date().toISOString()
+    });
+
+    showToast('✅ Avaliação nutricional salva!');
+    closeModal('modal-nutricional');
+    renderNutricional();
+  } catch(e) {
+    console.error(e);
+    showToast('Erro ao salvar. Tente novamente.');
+  } finally {
+    btn.disabled=false; btn.textContent='Salvar Avaliação';
+  }
+};
+
+window.deleteNutricional = async function(id) {
+  if (!confirm('Excluir esta avaliação?')) return;
+  await supa.from('nutritional_assessments').delete().eq('id', id);
+  showToast('Avaliação excluída.');
+  renderNutricional();
+};
+
+window.editNutricional = async function(id) {
+  const { data: r } = await supa.from('nutritional_assessments').select('*').eq('id', id).single();
+  if (!r) return;
+
+  // Busca atleta via Supabase
+  const { data: aData } = await supa.from('athletes').select('*').eq('id', r.athleteId).single();
+  await openNutricionalModal(r.athleteId);
+  await new Promise(res => setTimeout(res, 400));
+
+  const s = (fid, val) => { const el=document.getElementById(fid); if(el&&val!==null&&val!==undefined) el.value=val; };
+  s('nut-data', r.data);
+  s('nut-formula', r.formula||'JP7');
+  s('nut-equacao', r.equacao||'siri');
+  s('nut-pgordura-ideal', r.percentual_gordura_ideal||10);
+  s('nut-peitoral', r.dc_peitoral); s('nut-axilar', r.dc_axilar_media);
+  s('nut-triceps', r.dc_triceps); s('nut-subescapular', r.dc_subescapular);
+  s('nut-suprailiaca', r.dc_suprailiaca); s('nut-abdominal', r.dc_abdominal);
+  s('nut-coxa-dc', r.dc_coxa);
+  s('nut-cintura', r.circ_cintura); s('nut-quadril', r.circ_quadril);
+  s('nut-braco-d', r.circ_braco_d); s('nut-braco-e', r.circ_braco_e);
+  s('nut-coxa-d', r.circ_coxa_d); s('nut-coxa-e', r.circ_coxa_e);
+  s('nut-pant-d', r.circ_panturrilha_d); s('nut-pant-e', r.circ_panturrilha_e);
+  s('nut-umero-d', r.diam_umero_d); s('nut-umero-e', r.diam_umero_e);
+  s('nut-femur-d', r.diam_femur_d); s('nut-femur-e', r.diam_femur_e);
+  s('nut-obs', r.observacoes);
+  nutCalc(); nutCalcRCQ();
+
+  const btn = document.getElementById('nut-btn-save');
+  btn.textContent = 'Atualizar Avaliação';
+  btn.onclick = async () => { await saveNutricionalUpdate(id); };
+};
+
+async function saveNutricionalUpdate(id) {
+  // Re-run save logic but with update
+  const btn = document.getElementById('nut-btn-save');
+  btn.disabled=true; btn.textContent='Atualizando...';
+  try {
+    await supa.from('nutritional_assessments').delete().eq('id', id);
+    await saveNutricional();
+  } finally {
+    btn.disabled=false; btn.textContent='Atualizar Avaliação';
+  }
+}
+
+window.exportNutricionalPDF = async function(id) {
+  showToast('📄 Gerando PDF...');
+  const { data: r } = await supa.from('nutritional_assessments').select('*').eq('id', id).single();
+  if (!r) return;
+  const a = await dbGet('athletes', r.athleteId);
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const dataAv = r.data ? new Date(r.data+'T12:00').toLocaleDateString('pt-BR') : '—';
+  const pgColor = r.percentual_gordura<=12?'#00c853':r.percentual_gordura<=17?'#ff8c00':'#e0282e';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Avaliação Nutricional — ${a?.apelido||a?.nome||''}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#222;padding:28px;font-size:13px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #e0282e;padding-bottom:14px;margin-bottom:20px;}
+  .header h1{font-size:20px;color:#e0282e;text-transform:uppercase;letter-spacing:1px;}
+  .header p{font-size:11px;color:#888;margin-top:2px;}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-bottom:16px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:14px;margin-bottom:16px;}
+  .lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
+  .val{font-size:14px;font-weight:600;}
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#e0282e;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:5px;margin-top:16px;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;padding:6px 10px;text-align:left;border-bottom:2px solid #eee;}
+  td{padding:6px 10px;font-size:12px;border-bottom:1px solid #f5f5f5;}
+  @media print{body{padding:12px;} @page{margin:1cm;}}
+</style></head><body>
+<div class="header">
+  <div><h1>AC Paranavaí — Avaliação Nutricional</h1><p>Departamento de Fisioterapia Esportiva</p></div>
+  <div style="text-align:right;font-size:11px;color:#888;">
+    <div>Data avaliação: <strong>${dataAv}</strong></div>
+    <div>Fórmula: <strong>${r.formula||'JP7'}</strong> / ${r.equacao==='brozek'?'Brozek':'Siri'}</div>
+    <div>Emitido: ${hoje}</div>
+  </div>
+</div>
+
+<div class="section-title">Dados do Atleta</div>
+<div class="grid4">
+  <div><div class="lbl">Atleta</div><div class="val">${a?.apelido||a?.nome||'—'}</div></div>
+  <div><div class="lbl">Posição</div><div class="val">${r.posicao||'—'}</div></div>
+  <div><div class="lbl">Peso / Altura</div><div class="val">${r.peso||'—'} kg / ${r.altura||'—'} m</div></div>
+  <div><div class="lbl">Idade</div><div class="val">${r.idade||'—'} anos</div></div>
+</div>
+
+<div class="section-title">Composição Corporal</div>
+<div class="grid3">
+  <div style="text-align:center;"><div class="lbl">% Gordura</div><div class="val" style="font-size:28px;color:${pgColor};">${r.percentual_gordura||'—'}%</div></div>
+  <div style="text-align:center;"><div class="lbl">Massa Gorda</div><div class="val" style="font-size:22px;">${r.massa_gorda||'—'} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Massa Magra</div><div class="val" style="font-size:22px;">${r.massa_magra||'—'} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Peso Atual</div><div class="val">${r.peso||'—'} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Peso Ideal (${r.percentual_gordura_ideal||10}% gordura)</div><div class="val" style="color:#00c853;">${r.peso_ideal||'—'} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Soma Dobras</div><div class="val">${r.soma_dobras||'—'} mm</div></div>
+</div>
+
+${r.dc_peitoral||r.dc_abdominal?`
+<div class="section-title">Dobras Cutâneas (mm)</div>
+<table><tr><th>Peitoral</th><th>Axilar Média</th><th>Tríceps</th><th>Subescapular</th><th>Suprailíaca</th><th>Abdominal</th><th>Coxa</th></tr>
+<tr><td>${r.dc_peitoral||'—'}</td><td>${r.dc_axilar_media||'—'}</td><td>${r.dc_triceps||'—'}</td><td>${r.dc_subescapular||'—'}</td><td>${r.dc_suprailiaca||'—'}</td><td>${r.dc_abdominal||'—'}</td><td>${r.dc_coxa||'—'}</td></tr>
+</table>`:''}
+
+${r.circ_cintura||r.circ_braco_d?`
+<div class="section-title">Circunferências (cm)</div>
+<table><tr><th>Cintura</th><th>Quadril</th><th>RCQ</th><th>Braço D</th><th>Braço E</th><th>Coxa D</th><th>Coxa E</th><th>Pant. D</th><th>Pant. E</th></tr>
+<tr><td>${r.circ_cintura||'—'}</td><td>${r.circ_quadril||'—'}</td><td>${r.rcq||'—'}</td><td>${r.circ_braco_d||'—'}</td><td>${r.circ_braco_e||'—'}</td><td>${r.circ_coxa_d||'—'}</td><td>${r.circ_coxa_e||'—'}</td><td>${r.circ_panturrilha_d||'—'}</td><td>${r.circ_panturrilha_e||'—'}</td></tr>
+</table>`:''}
+
+${r.diam_umero_d||r.diam_femur_d?`
+<div class="section-title">Diâmetros Ósseos (cm)</div>
+<table><tr><th>Úmero D</th><th>Úmero E</th><th>Fêmur D</th><th>Fêmur E</th></tr>
+<tr><td>${r.diam_umero_d||'—'}</td><td>${r.diam_umero_e||'—'}</td><td>${r.diam_femur_d||'—'}</td><td>${r.diam_femur_e||'—'}</td></tr>
+</table>`:''}
+
+${r.observacoes?`<div class="section-title">Observações</div><p style="font-size:12px;color:#555;line-height:1.6;">${r.observacoes}</p>`:''}
+
+<div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;font-size:11px;color:#888;">
+  <div style="border-top:1px solid #ccc;padding-top:8px;">Responsável / Assinatura / Registro</div>
+  <div style="border-top:1px solid #ccc;padding-top:8px;">Atleta / Assinatura</div>
+</div>
+</body></html>`;
+
+  let iframe = document.getElementById('pdf-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'pdf-iframe';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;';
+    document.body.appendChild(iframe);
+  }
+  iframe.srcdoc = html;
+  iframe.onload = () => setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 600);
+};
+
+async function renderNutricional() {
+  const athletes = await getAthletesByCat();
+  const sel = document.getElementById('nut-filtro-atleta');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">Todos os atletas</option>' +
+    athletes.sort((a,b)=>(a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
+      .map(a=>`<option value="${a.id}">${a.apelido||a.nome}</option>`).join('');
+  sel.value = currentVal;
+
+  const atletaMap = {};
+  athletes.forEach(a => atletaMap[a.id] = a);
+
+  let query = supa.from('nutritional_assessments').select('*').order('data', {ascending: false});
+  if (currentVal) query = query.eq('athleteId', currentVal);
+  const { data: all } = await query;
+
+  const lista = document.getElementById('nut-lista');
+  if (!all?.length) {
+    lista.innerHTML = `<div class="empty-state"><div class="icon">🥗</div><h3>Nenhuma avaliação nutricional</h3><p>Clique em "+ Nova Avaliação" para começar.</p></div>`;
+    return;
+  }
+
+  const pgColor = pg => pg<=12?'#00c853':pg<=17?'#ffab00':'#e0282e';
+
+  lista.innerHTML = all.map(r => {
+    const a = atletaMap[r.athleteId] || {};
+    return `
+    <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;padding:20px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;">${escapeHtml(a.apelido||a.nome||'—')}</div>
+          <div style="font-size:12px;color:var(--cinza-texto);">📅 ${formatDate(r.data)} &nbsp;|&nbsp; ${r.formula||'JP7'} / ${r.equacao==='brozek'?'Brozek':'Siri'} &nbsp;|&nbsp; ${r.posicao||'—'}</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="editNutricional(${r.id})" class="btn btn-ghost btn-sm">✏️ Editar</button>
+          <button onclick="exportNutricionalPDF(${r.id})" class="btn btn-ghost btn-sm">📄 PDF</button>
+          ${currentRole==='admin'?`<button onclick="deleteNutricional(${r.id})" class="btn btn-danger btn-sm">🗑️</button>`:''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;font-size:12px;">
+        ${r.percentual_gordura!==null?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">% Gordura</div><div style="font-size:24px;font-weight:700;color:${pgColor(r.percentual_gordura)};">${r.percentual_gordura}%</div></div>`:''}
+        ${r.massa_magra?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Massa Magra</div><div style="font-size:18px;font-weight:700;">${r.massa_magra} kg</div></div>`:''}
+        ${r.massa_gorda?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Massa Gorda</div><div style="font-size:18px;font-weight:700;">${r.massa_gorda} kg</div></div>`:''}
+        ${r.peso_ideal?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Peso Ideal</div><div style="font-size:18px;font-weight:700;color:#00c853;">${r.peso_ideal} kg</div></div>`:''}
+        ${r.soma_dobras?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Soma Dobras</div><div style="font-size:18px;font-weight:700;">${r.soma_dobras} mm</div></div>`:''}
+        ${r.rcq?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">RCQ</div><div style="font-size:18px;font-weight:700;color:${r.rcq<0.9?'#00c853':'#e0282e'};">${r.rcq}</div></div>`:''}
+      </div>
+      ${r.observacoes?`<div style="margin-top:12px;font-size:12px;color:var(--cinza-texto);border-top:1px solid var(--cinza-borda);padding-top:10px;">📝 ${escapeHtml(r.observacoes)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+window.renderNutricional = renderNutricional;
+window.nutPreencherDados = nutPreencherDados;
+window.nutCalc = nutCalc;
+window.nutCalcRCQ = nutCalcRCQ;
 async function renderEvolucao() {
   const athletes = await getAthletesByCat();
   const sel = document.getElementById('ev-atleta');
@@ -3665,7 +4197,8 @@ async function renderEvolucao() {
     return;
   }
   if (tipo === 'monitoramento') await renderEvolucaoMonitoramento(athleteId, container);
-  else await renderEvolucaoAvaliacao(athleteId, container);
+  else if (tipo === 'avaliacao') await renderEvolucaoAvaliacao(athleteId, container);
+  else await renderEvolucaoNutricional(athleteId, container);
 }
 
 function drawLineChart(canvasId, labels, datasets, yLabel) {
@@ -3799,6 +4332,30 @@ async function renderEvolucaoAvaliacao(athleteId, container) {
       [{data:avs.map(a=>a.isquio_d||null),color:'#e0282e'},
        {data:avs.map(a=>a.isquio_e||null),color:'#60A5FA'}],
       '°',[{label:'Isquio D',color:'#e0282e'},{label:'Isquio E',color:'#60A5FA'}]);
+}
+
+async function renderEvolucaoNutricional(athleteId, container) {
+  const { data: avs } = await supa.from('nutritional_assessments')
+    .select('*').eq('athleteId', athleteId).order('data', {ascending: true});
+
+  if (!avs?.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🥗</div><h3>Sem avaliações nutricionais</h3></div>`;
+    return;
+  }
+  const labels = avs.map(a => a.data);
+
+  container.innerHTML =
+    makeChart('% Gordura e Peso Ideal (kg)', labels,
+      [{data: avs.map(a=>a.percentual_gordura||null), color:'#e0282e'},
+       {data: avs.map(a=>a.peso_ideal||null), color:'#00c853'}],
+      '', [{label:'% Gordura', color:'#e0282e'}, {label:'Peso Ideal (kg)', color:'#00c853'}]) +
+    makeChart('Massa Magra e Massa Gorda (kg)', labels,
+      [{data: avs.map(a=>a.massa_magra||null), color:'#60A5FA'},
+       {data: avs.map(a=>a.massa_gorda||null), color:'#ffab00'}],
+      'kg', [{label:'Massa Magra', color:'#60A5FA'}, {label:'Massa Gorda', color:'#ffab00'}]) +
+    makeChart('Soma das Dobras (mm)', labels,
+      [{data: avs.map(a=>a.soma_dobras||null), color:'#a78bfa'}],
+      'mm', [{label:'Soma Dobras', color:'#a78bfa'}]);
 }
 
 window.renderEvolucao = renderEvolucao;
