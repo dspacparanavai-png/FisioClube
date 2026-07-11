@@ -1154,60 +1154,37 @@ body.dark-mode #topbar {
       <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Posição</div><div id="av-info-posicao" style="font-weight:600;">—</div></div>
     </div>
 
-    <!-- Comprimento MMII -->
+    <!-- 1. Comprimento MMII -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📏 Comprimento de MMII (cm)</div>
     <div class="form-row" style="margin-bottom:16px;">
       <div class="form-group"><label>Direito (cm)</label><input type="number" step="0.1" class="form-control" id="av-mmii-d"></div>
       <div class="form-group"><label>Esquerdo (cm)</label><input type="number" step="0.1" class="form-control" id="av-mmii-e"></div>
     </div>
 
-    <!-- Squeeze Test -->
+    <!-- 2. Flexibilidade Isquiossurais -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Flexibilidade Isquiossurais (°)</div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-isquio-d"></div>
+      <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-isquio-e"></div>
+    </div>
+
+    <!-- 3. Squeeze Test -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦵 5" Squeeze Test (dor 0-10)</div>
     <div class="form-row" style="margin-bottom:16px;">
       <div class="form-group"><label>Direito</label><input type="number" step="0.1" min="0" max="10" class="form-control" id="av-squeeze-d" placeholder="0-10"></div>
       <div class="form-group"><label>Esquerdo</label><input type="number" step="0.1" min="0" max="10" class="form-control" id="av-squeeze-e" placeholder="0-10"></div>
     </div>
 
-    <!-- Lunge Test -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Lunge Test (graus)</div>
-    <div class="form-row" style="margin-bottom:16px;">
-      <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-lunge-d"></div>
-      <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-lunge-e"></div>
+    <!-- 4. Thomas Modificado -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Thomas Modificado (°)</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      <div class="form-group"><label style="font-size:11px;">Iliopsoas D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Reto Femoral D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Iliopsoas E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Reto Femoral E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-e"></div>
     </div>
 
-    <!-- Side Hop Test -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⏱️ Side Hop Test — 3 tentativas intercaladas (s) — menor tempo = melhor</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
-      <div class="form-group"><label style="font-size:10px;">D1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d1" oninput="avCalcBest('sh','d','min')"></div>
-      <div class="form-group"><label style="font-size:10px;">E1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e1" oninput="avCalcBest('sh','e','min')"></div>
-      <div class="form-group"><label style="font-size:10px;">D2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d2" oninput="avCalcBest('sh','d','min')"></div>
-      <div class="form-group"><label style="font-size:10px;">E2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e2" oninput="avCalcBest('sh','e','min')"></div>
-      <div class="form-group"><label style="font-size:10px;">D3 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d3" oninput="avCalcBest('sh','d','min')"></div>
-      <div class="form-group"><label style="font-size:10px;">E3 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e3" oninput="avCalcBest('sh','e','min')"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
-      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-sh-d-best" style="color:var(--acento);">—</strong> s</div>
-      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-sh-lsi" style="color:var(--acento);">—</strong></div>
-      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-sh-e-best" style="color:var(--acento);">—</strong> s</div>
-    </div>
-
-    <!-- Single Leg Hop -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦘 Single Leg Hop Test — 3 tentativas intercaladas (m) — maior distância = melhor</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
-      <div class="form-group"><label style="font-size:10px;">D1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d1" oninput="avCalcBest('slh','d','max')"></div>
-      <div class="form-group"><label style="font-size:10px;">E1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e1" oninput="avCalcBest('slh','e','max')"></div>
-      <div class="form-group"><label style="font-size:10px;">D2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d2" oninput="avCalcBest('slh','d','max')"></div>
-      <div class="form-group"><label style="font-size:10px;">E2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e2" oninput="avCalcBest('slh','e','max')"></div>
-      <div class="form-group"><label style="font-size:10px;">D3 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d3" oninput="avCalcBest('slh','d','max')"></div>
-      <div class="form-group"><label style="font-size:10px;">E3 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e3" oninput="avCalcBest('slh','e','max')"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
-      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-slh-d-best" style="color:var(--acento);">—</strong> m</div>
-      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-slh-lsi" style="color:var(--acento);">—</strong></div>
-      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-slh-e-best" style="color:var(--acento);">—</strong> m</div>
-    </div>
-
-    <!-- Preensão Palmar -->
+    <!-- 5. Preensão Palmar -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">✊ Preensão Palmar — 3 tentativas intercaladas (kgf)</div>
     <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
       <div class="form-group"><label style="font-size:10px;">D1 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-d1" oninput="avCalcBest('grip','d','max')"></div>
@@ -1223,32 +1200,46 @@ body.dark-mode #topbar {
       <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-grip-e-best" style="color:var(--acento);">—</strong> kgf</div>
     </div>
 
-    <!-- Flexibilidade Isquiossurais -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Flexibilidade Isquiossurais (°)</div>
+    <!-- 6. Lunge Test -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Lunge Test (graus)</div>
     <div class="form-row" style="margin-bottom:16px;">
-      <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-isquio-d"></div>
-      <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-isquio-e"></div>
+      <div class="form-group"><label>Direito (°)</label><input type="number" step="0.1" class="form-control" id="av-lunge-d"></div>
+      <div class="form-group"><label>Esquerdo (°)</label><input type="number" step="0.1" class="form-control" id="av-lunge-e"></div>
     </div>
 
-    <!-- Thomas Modificado -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Thomas Modificado (°)</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
-      <div class="form-group"><label style="font-size:11px;">Iliopsoas D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-d"></div>
-      <div class="form-group"><label style="font-size:11px;">Reto Femoral D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-d"></div>
-      <div class="form-group"><label style="font-size:11px;">Iliopsoas E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-e"></div>
-      <div class="form-group"><label style="font-size:11px;">Reto Femoral E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-e"></div>
+    <!-- 7. Single Leg Hop -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦘 Single Leg Hop Test — 3 tentativas intercaladas (m) — maior distância = melhor</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+      <div class="form-group"><label style="font-size:10px;">D1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d1" oninput="avCalcBest('slh','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e1" oninput="avCalcBest('slh','e','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">D2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d2" oninput="avCalcBest('slh','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e2" oninput="avCalcBest('slh','e','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">D3 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d3" oninput="avCalcBest('slh','d','max')"></div>
+      <div class="form-group"><label style="font-size:10px;">E3 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e3" oninput="avCalcBest('slh','e','max')"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-slh-d-best" style="color:var(--acento);">—</strong> m</div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-slh-lsi" style="color:var(--acento);">—</strong></div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-slh-e-best" style="color:var(--acento);">—</strong> m</div>
     </div>
 
-    <!-- Nordic Hamstring -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">💪 Nordic Hamstring Test — bilateral (°)</div>
-    <div class="form-row" style="margin-bottom:16px;">
-      <div class="form-group">
-        <label>Resultado bilateral (°)</label>
-        <input type="number" step="0.1" class="form-control" id="av-nordic-d" placeholder="Ex: 45">
-      </div>
+    <!-- 8. Side Hop Test -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⏱️ Side Hop Test — 3 tentativas intercaladas (s) — menor tempo = melhor</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+      <div class="form-group"><label style="font-size:10px;">D1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d1" oninput="avCalcBest('sh','d','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">E1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e1" oninput="avCalcBest('sh','e','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">D2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d2" oninput="avCalcBest('sh','d','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">E2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e2" oninput="avCalcBest('sh','e','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">D3 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d3" oninput="avCalcBest('sh','d','min')"></div>
+      <div class="form-group"><label style="font-size:10px;">E3 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e3" oninput="avCalcBest('sh','e','min')"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor D: <strong id="av-sh-d-best" style="color:var(--acento);">—</strong> s</div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">LSI: <strong id="av-sh-lsi" style="color:var(--acento);">—</strong></div>
+      <div style="background:var(--cinza-fundo);border-radius:6px;padding:8px;text-align:center;">Melhor E: <strong id="av-sh-e-best" style="color:var(--acento);">—</strong> s</div>
     </div>
 
-    <!-- Y-Balance Test -->
+    <!-- 9. Y-Balance Test -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⭐ Y-Balance Test — 3 tentativas por direção (cm)</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">
       <div>
@@ -1297,6 +1288,15 @@ body.dark-mode #topbar {
       </div>
     </div>
     <div style="text-align:center;background:var(--cinza-fundo);border-radius:8px;padding:8px;margin-bottom:16px;font-size:12px;">LSI Y-Balance: <strong id="av-ybt-lsi" style="color:var(--acento);">—</strong></div>
+
+    <!-- 10. Nordic Hamstring -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">💪 Nordic Hamstring Test — bilateral (°)</div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>Resultado bilateral (°)</label>
+        <input type="number" step="0.1" class="form-control" id="av-nordic-d" placeholder="Ex: 45">
+      </div>
+    </div>
 
     <!-- Observações -->
     <div class="form-group" style="margin-bottom:16px;">
@@ -1785,10 +1785,10 @@ body.dark-mode #topbar {
     <!-- Dobras cutâneas -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📏 Dobras Cutâneas (mm)</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
-      <div class="form-group"><label style="font-size:11px;">Peitoral</label><input type="number" step="0.1" class="form-control" id="nut-peitoral" oninput="nutCalc()"></div>
-      <div class="form-group"><label style="font-size:11px;">Axilar Média</label><input type="number" step="0.1" class="form-control" id="nut-axilar" oninput="nutCalc()"></div>
-      <div class="form-group"><label style="font-size:11px;">Tríceps</label><input type="number" step="0.1" class="form-control" id="nut-triceps" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Subescapular</label><input type="number" step="0.1" class="form-control" id="nut-subescapular" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Tríceps</label><input type="number" step="0.1" class="form-control" id="nut-triceps" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Axilar Média</label><input type="number" step="0.1" class="form-control" id="nut-axilar" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Peitoral</label><input type="number" step="0.1" class="form-control" id="nut-peitoral" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Suprailíaca</label><input type="number" step="0.1" class="form-control" id="nut-suprailiaca" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Abdominal</label><input type="number" step="0.1" class="form-control" id="nut-abdominal" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Coxa</label><input type="number" step="0.1" class="form-control" id="nut-coxa-dc" oninput="nutCalc()"></div>
@@ -1818,11 +1818,15 @@ body.dark-mode #topbar {
 
     <!-- Circunferências -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Circunferências (cm)</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+      <div class="form-group"><label style="font-size:11px;">Pescoço</label><input type="number" step="0.1" class="form-control" id="nut-pescoco"></div>
+      <div class="form-group"><label style="font-size:11px;">Tórax</label><input type="number" step="0.1" class="form-control" id="nut-torax"></div>
+      <div class="form-group"><label style="font-size:11px;">Peitoral</label><input type="number" step="0.1" class="form-control" id="nut-circ-peitoral"></div>
       <div class="form-group"><label style="font-size:11px;">Cintura</label><input type="number" step="0.1" class="form-control" id="nut-cintura" oninput="nutCalcRCQ()"></div>
-      <div class="form-group"><label style="font-size:11px;">Quadril</label><input type="number" step="0.1" class="form-control" id="nut-quadril" oninput="nutCalcRCQ()"></div>
+      <div class="form-group"><label style="font-size:11px;">Abdômen</label><input type="number" step="0.1" class="form-control" id="nut-abdomen"></div>
       <div class="form-group"><label style="font-size:11px;">Braço D</label><input type="number" step="0.1" class="form-control" id="nut-braco-d"></div>
       <div class="form-group"><label style="font-size:11px;">Braço E</label><input type="number" step="0.1" class="form-control" id="nut-braco-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Quadril</label><input type="number" step="0.1" class="form-control" id="nut-quadril" oninput="nutCalcRCQ()"></div>
       <div class="form-group"><label style="font-size:11px;">Coxa D</label><input type="number" step="0.1" class="form-control" id="nut-coxa-d"></div>
       <div class="form-group"><label style="font-size:11px;">Coxa E</label><input type="number" step="0.1" class="form-control" id="nut-coxa-e"></div>
       <div class="form-group"><label style="font-size:11px;">Panturrilha D</label><input type="number" step="0.1" class="form-control" id="nut-pant-d"></div>
@@ -1836,9 +1840,8 @@ body.dark-mode #topbar {
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦴 Diâmetros Ósseos (cm)</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
       <div class="form-group"><label style="font-size:11px;">Úmero D</label><input type="number" step="0.01" class="form-control" id="nut-umero-d"></div>
-      <div class="form-group"><label style="font-size:11px;">Úmero E</label><input type="number" step="0.01" class="form-control" id="nut-umero-e"></div>
+      <div class="form-group"><label style="font-size:11px;">Punho D</label><input type="number" step="0.01" class="form-control" id="nut-punho-d"></div>
       <div class="form-group"><label style="font-size:11px;">Fêmur D</label><input type="number" step="0.01" class="form-control" id="nut-femur-d"></div>
-      <div class="form-group"><label style="font-size:11px;">Fêmur E</label><input type="number" step="0.01" class="form-control" id="nut-femur-e"></div>
     </div>
 
     <!-- Observações -->
@@ -4037,8 +4040,10 @@ window.saveNutricional = async function() {
       circ_braco_d:g('nut-braco-d'), circ_braco_e:g('nut-braco-e'),
       circ_coxa_d:g('nut-coxa-d'), circ_coxa_e:g('nut-coxa-e'),
       circ_panturrilha_d:g('nut-pant-d'), circ_panturrilha_e:g('nut-pant-e'),
-      diam_umero_d:g('nut-umero-d'), diam_umero_e:g('nut-umero-e'),
-      diam_femur_d:g('nut-femur-d'), diam_femur_e:g('nut-femur-e'),
+      circ_pescoco:g('nut-pescoco'), circ_torax:g('nut-torax'),
+      circ_peitoral:g('nut-circ-peitoral'), circ_abdomen:g('nut-abdomen'),
+      diam_umero_d:g('nut-umero-d'), diam_punho_d:g('nut-punho-d'),
+      diam_femur_d:g('nut-femur-d'),
       observacoes:document.getElementById('nut-obs').value.trim()||null,
       createdAt: new Date().toISOString()
     });
@@ -4103,8 +4108,10 @@ window.editNutricional = async function(id) {
   s('nut-braco-d', r.circ_braco_d); s('nut-braco-e', r.circ_braco_e);
   s('nut-coxa-d', r.circ_coxa_d); s('nut-coxa-e', r.circ_coxa_e);
   s('nut-pant-d', r.circ_panturrilha_d); s('nut-pant-e', r.circ_panturrilha_e);
-  s('nut-umero-d', r.diam_umero_d); s('nut-umero-e', r.diam_umero_e);
-  s('nut-femur-d', r.diam_femur_d); s('nut-femur-e', r.diam_femur_e);
+  s('nut-pescoco', r.circ_pescoco); s('nut-torax', r.circ_torax);
+  s('nut-circ-peitoral', r.circ_peitoral); s('nut-abdomen', r.circ_abdomen);
+  s('nut-umero-d', r.diam_umero_d); s('nut-punho-d', r.diam_punho_d);
+  s('nut-femur-d', r.diam_femur_d);
   s('nut-obs', r.observacoes);
   nutCalc(); nutCalcRCQ();
 
@@ -4185,16 +4192,19 @@ ${r.dc_peitoral||r.dc_abdominal?`
 <tr><td>${r.dc_peitoral||'—'}</td><td>${r.dc_axilar_media||'—'}</td><td>${r.dc_triceps||'—'}</td><td>${r.dc_subescapular||'—'}</td><td>${r.dc_suprailiaca||'—'}</td><td>${r.dc_abdominal||'—'}</td><td>${r.dc_coxa||'—'}</td></tr>
 </table>`:''}
 
-${r.circ_cintura||r.circ_braco_d?`
+${r.circ_cintura||r.circ_braco_d||r.circ_pescoco?`
 <div class="section-title">Circunferências (cm)</div>
-<table><tr><th>Cintura</th><th>Quadril</th><th>RCQ</th><th>Braço D</th><th>Braço E</th><th>Coxa D</th><th>Coxa E</th><th>Pant. D</th><th>Pant. E</th></tr>
-<tr><td>${r.circ_cintura||'—'}</td><td>${r.circ_quadril||'—'}</td><td>${r.rcq||'—'}</td><td>${r.circ_braco_d||'—'}</td><td>${r.circ_braco_e||'—'}</td><td>${r.circ_coxa_d||'—'}</td><td>${r.circ_coxa_e||'—'}</td><td>${r.circ_panturrilha_d||'—'}</td><td>${r.circ_panturrilha_e||'—'}</td></tr>
+<table>
+  <tr><th>Pescoço</th><th>Tórax</th><th>Peitoral</th><th>Cintura</th><th>Abdômen</th><th>Quadril</th><th>RCQ</th></tr>
+  <tr><td>${r.circ_pescoco||'—'}</td><td>${r.circ_torax||'—'}</td><td>${r.circ_peitoral||'—'}</td><td>${r.circ_cintura||'—'}</td><td>${r.circ_abdomen||'—'}</td><td>${r.circ_quadril||'—'}</td><td>${r.rcq||'—'}</td></tr>
+  <tr><th>Braço D</th><th>Braço E</th><th>Coxa D</th><th>Coxa E</th><th>Pant. D</th><th>Pant. E</th><th></th></tr>
+  <tr><td>${r.circ_braco_d||'—'}</td><td>${r.circ_braco_e||'—'}</td><td>${r.circ_coxa_d||'—'}</td><td>${r.circ_coxa_e||'—'}</td><td>${r.circ_panturrilha_d||'—'}</td><td>${r.circ_panturrilha_e||'—'}</td><td></td></tr>
 </table>`:''}
 
-${r.diam_umero_d||r.diam_femur_d?`
+${r.diam_umero_d||r.diam_punho_d||r.diam_femur_d?`
 <div class="section-title">Diâmetros Ósseos (cm)</div>
-<table><tr><th>Úmero D</th><th>Úmero E</th><th>Fêmur D</th><th>Fêmur E</th></tr>
-<tr><td>${r.diam_umero_d||'—'}</td><td>${r.diam_umero_e||'—'}</td><td>${r.diam_femur_d||'—'}</td><td>${r.diam_femur_e||'—'}</td></tr>
+<table><tr><th>Úmero D</th><th>Punho D</th><th>Fêmur D</th></tr>
+<tr><td>${r.diam_umero_d||'—'}</td><td>${r.diam_punho_d||'—'}</td><td>${r.diam_femur_d||'—'}</td></tr>
 </table>`:''}
 
 ${r.observacoes?`<div class="section-title">Observações</div><p style="font-size:12px;color:#555;line-height:1.6;">${r.observacoes}</p>`:''}
