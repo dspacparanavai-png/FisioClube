@@ -1347,9 +1347,17 @@ body.dark-mode #topbar {
           <option>Goleiro</option>
           <option>Zagueiro</option>
           <option>Lateral</option>
-          <option>Volante</option>
-          <option>Meia</option>
+          <option>Meio-Campo</option>
           <option>Atacante</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Perna Dominante</label>
+        <select class="form-control" id="f-perna">
+          <option value="">Selecione...</option>
+          <option value="Direita">Direita</option>
+          <option value="Esquerda">Esquerda</option>
+          <option value="Ambidestro">Ambidestro</option>
         </select>
       </div>
     </div>
@@ -2260,7 +2268,7 @@ async function renderAtletas() {
 
   if (atletasSortMode === 'posicao') {
     // Ordem fixa das posições
-    const POSICAO_ORDER = ['Goleiro','Zagueiro','Lateral','Volante','Meia','Atacante'];
+    const POSICAO_ORDER = ['Goleiro','Zagueiro','Lateral','Meio-Campo','Atacante'];
 
     const groups = {};
     sortAlfa(filtered).forEach(a => {
@@ -2364,6 +2372,7 @@ async function openAthleteDetail(id) {
         <div class="detail-meta">
           ${a.numero ? `<div class="meta-item"><span>Camisa</span>#${a.numero}</div>` : ''}
           ${a.posicao ? `<div class="meta-item"><span>Posição</span>${a.posicao}</div>` : ''}
+          ${a.perna ? `<div class="meta-item"><span>Perna</span>${a.perna}</div>` : ''}
           ${idade ? `<div class="meta-item"><span>Idade</span>${idade} anos</div>` : ''}
           ${a.nasc ? `<div class="meta-item"><span>Nascimento</span>${formatDate(a.nasc)}</div>` : ''}
           <div class="meta-item"><span>Atendimentos</span>${sessions.length} sessões</div>
@@ -2524,6 +2533,8 @@ async function openAthleteModal(id = null) {
   // Reset form
   ['f-nome','f-apelido','f-numero','f-diagnostico','f-obs'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('f-posicao').value = '';
+  const pernaEl = document.getElementById('f-perna');
+  if (pernaEl) pernaEl.value = '';
   document.getElementById('f-status').value = 'ativo';
   document.getElementById('f-categoria').value = currentCategoria;
   document.getElementById('f-nasc').value = '';
@@ -2535,6 +2546,8 @@ async function openAthleteModal(id = null) {
     document.getElementById('f-apelido').value = a.apelido || '';
     document.getElementById('f-numero').value = a.numero || '';
     document.getElementById('f-posicao').value = a.posicao || '';
+    const pernaEl = document.getElementById('f-perna');
+    if (pernaEl) pernaEl.value = a.perna || '';
     document.getElementById('f-status').value = a.status || 'ativo';
     document.getElementById('f-nasc').value = a.nasc || '';
     document.getElementById('f-diagnostico').value = a.diagnostico || '';
@@ -2577,6 +2590,7 @@ async function saveAthlete() {
     apelido: document.getElementById('f-apelido').value.trim(),
     numero: document.getElementById('f-numero').value.trim(),
     posicao: document.getElementById('f-posicao').value,
+    perna: document.getElementById('f-perna')?.value || '',
     status: document.getElementById('f-status').value,
     nasc: document.getElementById('f-nasc').value,
     diagnostico: document.getElementById('f-diagnostico').value.trim(),
