@@ -1793,8 +1793,8 @@ body.dark-mode #topbar {
     <!-- Dobras cutâneas -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📏 Dobras Cutâneas (mm)</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
-      <div class="form-group"><label style="font-size:11px;">Subescapular</label><input type="number" step="0.1" class="form-control" id="nut-subescapular" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Tríceps</label><input type="number" step="0.1" class="form-control" id="nut-triceps" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Subescapular</label><input type="number" step="0.1" class="form-control" id="nut-subescapular" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Axilar Média</label><input type="number" step="0.1" class="form-control" id="nut-axilar" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Peitoral</label><input type="number" step="0.1" class="form-control" id="nut-peitoral" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Suprailíaca</label><input type="number" step="0.1" class="form-control" id="nut-suprailiaca" oninput="nutCalc()"></div>
@@ -1813,6 +1813,10 @@ body.dark-mode #topbar {
         <div><div style="font-size:10px;color:var(--cinza-texto);">Massa Magra</div><div id="nut-mmagra" style="font-size:20px;font-weight:700;">—</div><div style="font-size:10px;color:var(--cinza-texto);">kg</div></div>
         <div><div style="font-size:10px;color:var(--cinza-texto);">Peso Ideal</div><div id="nut-pesoidal" style="font-size:20px;font-weight:700;color:#00c853;">—</div><div style="font-size:10px;color:var(--cinza-texto);">kg</div></div>
       </div>
+      <div id="nut-osseo-box" style="display:none;margin-top:12px;text-align:center;padding:10px;background:rgba(167,139,250,0.1);border-radius:8px;border:1px solid rgba(167,139,250,0.3);">
+        <div style="font-size:10px;color:#a78bfa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Massa Óssea — Fórmula de Rocha</div>
+        <div id="nut-osseo" style="font-size:22px;font-weight:700;color:#a78bfa;">—</div>
+      </div>
       <div style="margin-top:10px;text-align:center;font-size:11px;color:var(--cinza-texto);">% gordura ideal para futebol (esportistas): <strong>8–12%</strong></div>
     </div>
 
@@ -1820,7 +1824,7 @@ body.dark-mode #topbar {
     <div class="form-row" style="margin-bottom:16px;">
       <div class="form-group">
         <label>% Gordura ideal (para cálculo do peso ideal)</label>
-        <input type="number" step="0.1" min="1" max="25" value="10" class="form-control" id="nut-pgordura-ideal" oninput="nutCalc()" placeholder="Ex: 10">
+        <input type="number" step="0.1" min="1" max="25" value="12" class="form-control" id="nut-pgordura-ideal" oninput="nutCalc()" placeholder="Ex: 12">
       </div>
     </div>
 
@@ -1847,9 +1851,9 @@ body.dark-mode #topbar {
     <!-- Diâmetros ósseos -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦴 Diâmetros Ósseos (cm)</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
-      <div class="form-group"><label style="font-size:11px;">Úmero D</label><input type="number" step="0.01" class="form-control" id="nut-umero-d"></div>
-      <div class="form-group"><label style="font-size:11px;">Punho D</label><input type="number" step="0.01" class="form-control" id="nut-punho-d"></div>
-      <div class="form-group"><label style="font-size:11px;">Fêmur D</label><input type="number" step="0.01" class="form-control" id="nut-femur-d"></div>
+      <div class="form-group"><label style="font-size:11px;">Úmero D</label><input type="number" step="0.01" class="form-control" id="nut-umero-d" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Punho D</label><input type="number" step="0.01" class="form-control" id="nut-punho-d" oninput="nutCalc()"></div>
+      <div class="form-group"><label style="font-size:11px;">Fêmur D</label><input type="number" step="0.01" class="form-control" id="nut-femur-d" oninput="nutCalc()"></div>
     </div>
 
     <!-- Observações -->
@@ -3940,6 +3944,16 @@ function nutCalc() {
   const mmagra = peso && mgorda ? parseFloat((peso - mgorda).toFixed(2)) : null;
   const pesoIdeal = mmagra ? parseFloat((mmagra / (1 - pgIdeal/100)).toFixed(2)) : null;
 
+  // Fórmula de Rocha — massa óssea
+  const umero = parseFloat(document.getElementById('nut-umero-d')?.value) || null;
+  const punho = parseFloat(document.getElementById('nut-punho-d')?.value) || null;
+  const femur = parseFloat(document.getElementById('nut-femur-d')?.value) || null;
+  const altCm = a?.altura ? (parseFloat(a.altura) > 3 ? parseFloat(a.altura) : parseFloat(a.altura) * 100) : null;
+  let massaOssea = null;
+  if (altCm && umero && punho && femur) {
+    massaOssea = parseFloat((3.02 * (altCm**2 * umero * femur * 0.1)**0.712).toFixed(2));
+  }
+
   document.getElementById('nut-soma').textContent = soma ? soma.toFixed(1) : '—';
   document.getElementById('nut-densidade').textContent = densidade ? densidade.toFixed(4) : '—';
   const pgColor = pgordura <= 12 ? '#00c853' : pgordura <= 17 ? '#ffab00' : '#e0282e';
@@ -3947,6 +3961,10 @@ function nutCalc() {
   document.getElementById('nut-mgorda').textContent = mgorda ?? '—';
   document.getElementById('nut-mmagra').textContent = mmagra ?? '—';
   document.getElementById('nut-pesoidal').textContent = pesoIdeal ?? '—';
+  const osseoEl = document.getElementById('nut-osseo');
+  const osseoBox = document.getElementById('nut-osseo-box');
+  if (osseoEl) osseoEl.textContent = massaOssea ? massaOssea + ' kg' : '—';
+  if (osseoBox) osseoBox.style.display = massaOssea ? 'block' : 'none';
   resEl.style.display = 'block';
 }
 
@@ -3988,6 +4006,23 @@ window.openNutricionalModal = async function(id) {
   });
 
   if (id) { sel.value = id; await nutPreencherDados(); }
+
+  // Puxar diâmetros da avaliação mais recente do atleta
+  const atletaId = parseInt(sel.value);
+  if (atletaId) {
+    const { data: ultima } = await supa.from('nutritional_assessments')
+      .select('diam_umero_d, diam_punho_d, diam_femur_d')
+      .eq('athleteId', atletaId)
+      .order('data', { ascending: false })
+      .limit(1);
+    if (ultima && ultima.length > 0) {
+      const u = ultima[0];
+      if (u.diam_umero_d) document.getElementById('nut-umero-d').value = u.diam_umero_d;
+      if (u.diam_punho_d) document.getElementById('nut-punho-d').value = u.diam_punho_d;
+      if (u.diam_femur_d) document.getElementById('nut-femur-d').value = u.diam_femur_d;
+      nutCalc();
+    }
+  }
 
   const btn = document.getElementById('nut-btn-save');
   btn.textContent = 'Salvar Avaliação';
@@ -4058,6 +4093,11 @@ window.saveNutricional = async function() {
       circ_peitoral:g('nut-circ-peitoral'), circ_abdomen:g('nut-abdomen'),
       diam_umero_d:g('nut-umero-d'), diam_punho_d:g('nut-punho-d'),
       diam_femur_d:g('nut-femur-d'),
+      massa_ossea: (()=>{
+        const u=g('nut-umero-d'), p=g('nut-punho-d'), f=g('nut-femur-d');
+        const ac = nutAtletaCache?.altura ? (parseFloat(nutAtletaCache.altura)>3?parseFloat(nutAtletaCache.altura):parseFloat(nutAtletaCache.altura)*100) : null;
+        return (ac&&u&&p&&f) ? parseFloat((3.02*(ac**2*u*f*0.1)**0.712).toFixed(2)) : null;
+      })(),
       observacoes:document.getElementById('nut-obs').value.trim()||null,
       createdAt: new Date().toISOString()
     });
@@ -4286,6 +4326,7 @@ async function renderNutricional() {
         ${r.peso_ideal?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Peso Ideal</div><div style="font-size:18px;font-weight:700;color:#00c853;">${r.peso_ideal} kg</div></div>`:''}
         ${r.soma_dobras?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Soma Dobras</div><div style="font-size:18px;font-weight:700;">${r.soma_dobras} mm</div></div>`:''}
         ${r.rcq?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">RCQ</div><div style="font-size:18px;font-weight:700;color:${r.rcq<0.9?'#00c853':'#e0282e'};">${r.rcq}</div></div>`:''}
+        ${r.massa_ossea?`<div class="mon-card" style="padding:10px;text-align:center;"><div class="mon-label">Massa Óssea (Rocha)</div><div style="font-size:18px;font-weight:700;color:#a78bfa;">${r.massa_ossea} kg</div></div>`:''}
       </div>
       ${r.observacoes?`<div style="margin-top:12px;font-size:12px;color:var(--cinza-texto);border-top:1px solid var(--cinza-borda);padding-top:10px;">📝 ${escapeHtml(r.observacoes)}</div>`:''}
     </div>`;
