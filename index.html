@@ -1785,7 +1785,7 @@ body.dark-mode #topbar {
         <label>Equação % Gordura</label>
         <select class="form-control" id="nut-equacao" onchange="nutCalc()">
           <option value="siri">Siri (1956)</option>
-          <option value="brozek">Brozek (1963)</option>
+          <option value="brozek" selected>Brozek (1963)</option>
         </select>
       </div>
     </div>
@@ -3995,9 +3995,9 @@ window.openNutricionalModal = async function(id) {
   // Reset fields
   const inputs = document.querySelectorAll('#modal-nutricional input[type="number"], #modal-nutricional textarea');
   inputs.forEach(i => i.value = '');
-  document.getElementById('nut-pgordura-ideal').value = '10';
   document.getElementById('nut-formula').value = 'JP7';
-  document.getElementById('nut-equacao').value = 'siri';
+  document.getElementById('nut-equacao').value = 'brozek';
+  document.getElementById('nut-pgordura-ideal').value = '12';
   document.getElementById('nut-resultado').style.display = 'none';
   document.getElementById('nut-rcq').textContent = '—';
   document.getElementById('nut-peso-atual').value = '';
