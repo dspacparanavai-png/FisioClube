@@ -3456,7 +3456,7 @@ window.installPWA = async function() {
 // ══════════════════════════════════════════════════════════════
 
 function avGetVals(prefix, side, n) {
-  return Array.from({length: n}, (_, i) => parseFloat(document.getElementById(`av-${prefix}-${side}${i+1}`)?.value) || null).filter(v => v !== null);
+  return Array.from({length: n}, (_, i) => { const v = document.getElementById(`av-${prefix}-${side}${i+1}`)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; }).filter(v => v !== null);
 }
 
 function avCalcBest(prefix, side, mode) {
@@ -3489,7 +3489,7 @@ function avCalcYBT(side) {
     bests[dir] = vals.length ? Math.max(...vals) : null;
   });
 
-  const mmii = parseFloat(document.getElementById(`av-mmii-${side}`)?.value) || null;
+  const mmii = (() => { const v = document.getElementById(`av-mmii-${side}`)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; })();
   if (bests.ant !== null && bests.pm !== null && bests.pl !== null && mmii) {
     const composto = ((bests.ant + bests.pm + bests.pl) / (mmii * 3)) * 100;
     document.getElementById(`av-ybt-composto-${side}`).textContent = composto.toFixed(1);
@@ -3587,7 +3587,7 @@ window.saveAvaliacao = async function saveAvaliacao() {
     const a = await dbGet('athletes', athleteId);
     const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
 
-    const g = id => parseFloat(document.getElementById(id)?.value) || null;
+    const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
 
     // Side hop (min=best)
     const sh_d = avGetBest('sh','d','min');
@@ -3721,7 +3721,7 @@ async function editAvaliacao(id) {
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = 'Atualizando...';
     try {
-      const g = fid => parseFloat(document.getElementById(fid)?.value) || null;
+      const g = fid => { const v = document.getElementById(fid)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
       const sh_d = avGetBest('sh','d','min'), sh_e = avGetBest('sh','e','min');
       const slh_d = avGetBest('slh','d','max'), slh_e = avGetBest('slh','e','max');
       const grip_d = avGetBest('grip','d','max'), grip_e = avGetBest('grip','e','max');
@@ -3902,7 +3902,7 @@ async function nutPreencherDados() {
 }
 
 function nutCalc() {
-  const g = id => parseFloat(document.getElementById(id)?.value) || null;
+  const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
   const formula = document.getElementById('nut-formula')?.value || 'JP7';
   const equacao = document.getElementById('nut-equacao')?.value || 'siri';
   // Usa peso do campo editável do formulário
@@ -4040,7 +4040,7 @@ window.saveNutricional = async function() {
   btn.disabled = true; btn.textContent = 'Salvando...';
 
   try {
-    const g = id => parseFloat(document.getElementById(id)?.value) || null;
+    const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
     const a = nutAtletaCache;
     const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
     const formula = document.getElementById('nut-formula').value;
