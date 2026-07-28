@@ -2281,7 +2281,7 @@ function setSortMode(mode) {
 }
 
 function sortAlfa(arr) {
-  return [...arr].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+  return [...arr].sort((a, b) => (a.apelido || a.nome || '').localeCompare(b.apelido || b.nome || '', 'pt-BR'));
 }
 
 function renderAthleteCard(a) {
