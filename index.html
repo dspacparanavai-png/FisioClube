@@ -1666,114 +1666,159 @@ body.dark-mode #topbar {
         <!-- ANTERIOR -->
         <div style="text-align:center;flex:1;max-width:160px;">
           <div style="font-size:10px;color:var(--cinza-texto);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Anterior</div>
-          <svg viewBox="0 0 120 280" style="width:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 120 236" style="width:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <radialGradient id="skinG" cx="40%" cy="35%"><stop offset="0%" stop-color="#d4a876"/><stop offset="100%" stop-color="#b8895a"/></radialGradient>
+              <radialGradient id="skinG" cx="35%" cy="30%" r="80%">
+                <stop offset="0%" stop-color="#e8bd8f"/>
+                <stop offset="55%" stop-color="#cf9f70"/>
+                <stop offset="100%" stop-color="#a97b4f"/>
+              </radialGradient>
             </defs>
+            <!-- sombra de contato -->
+            <ellipse cx="60" cy="230" rx="26" ry="4" fill="#000" opacity="0.10"/>
+            <!-- Cabelo -->
+            <path d="M46,12 Q60,1 74,12 Q73,7 60,5 Q47,7 46,12 Z" fill="#4a3527"/>
             <!-- Cabeça -->
-            <ellipse cx="60" cy="18" rx="14" ry="16" fill="url(#skinG)" stroke="#a07040" stroke-width="0.8"/>
+            <ellipse cx="60" cy="18" rx="13" ry="15" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.7"/>
             <!-- Pescoço -->
-            <rect x="54" y="32" width="12" height="10" rx="3" fill="#c8966a" stroke="#a07040" stroke-width="0.5"/>
+            <path d="M53,29 L67,29 L65,40 Q60,42.5 55,40 Z" fill="#c2946a" stroke="#8f6039" stroke-width="0.5"/>
             <!-- Tronco -->
-            <path d="M35 42 Q28 45 26 58 L26 100 Q26 108 35 110 L85 110 Q94 108 94 100 L94 58 Q92 45 85 42 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.8"/>
+            <path d="M37,40 C28,43 24,51 24,61 L24,82 C24,86 25,90 27,92 C25,95 24,98 24,101 C24,107 28,111 35,113 L85,113 C92,111 96,107 96,101 C96,98 95,95 93,92 C95,90 96,86 96,82 L96,61 C96,51 92,43 83,40 C81,47 77,53 71,56 C64,59 56,59 49,56 C43,53 39,47 37,40 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.8"/>
+            <!-- linha esterno / abdominal -->
+            <line x1="60" y1="60" x2="60" y2="108" stroke="#8f6039" stroke-width="0.5" opacity="0.35"/>
+            <path d="M38,60 Q60,68 82,60" stroke="#8f6039" stroke-width="0.5" opacity="0.35" fill="none"/>
+            <path d="M33,78 Q41,90 35,102" stroke="#8f6039" stroke-width="0.4" opacity="0.25" fill="none"/>
+            <path d="M87,78 Q79,90 85,102" stroke="#8f6039" stroke-width="0.4" opacity="0.25" fill="none"/>
             <!-- Ombros -->
-            <ellipse cx="24" cy="50" rx="10" ry="8" fill="#c0906a" stroke="#a07040" stroke-width="0.6"/>
-            <ellipse cx="96" cy="50" rx="10" ry="8" fill="#c0906a" stroke="#a07040" stroke-width="0.6"/>
+            <ellipse cx="23" cy="49" rx="11" ry="9" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.7"/>
+            <ellipse cx="97" cy="49" rx="11" ry="9" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.7"/>
             <!-- Braços -->
-            <path d="M16 56 Q10 60 10 80 Q10 90 16 92 L24 92 Q28 90 28 80 L28 56 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M92 56 Q92 60 90 80 Q90 90 96 92 L104 92 Q110 90 110 80 L110 56 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
+            <path d="M13,55 C8,59 7,68 8,78 C9,86 11,90 16,92 L25,92 C28,90 29,86 28,78 L27,57 C24,53 17,52 13,55 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
+            <path d="M107,55 C112,59 113,68 112,78 C111,86 109,90 104,92 L95,92 C92,90 91,86 92,78 L93,57 C96,53 103,52 107,55 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
             <!-- Antebraços -->
-            <path d="M13 92 Q9 96 10 112 L18 112 Q22 110 22 96 L18 92 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M98 92 Q100 96 100 112 L108 112 Q110 110 110 96 L104 92 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
+            <path d="M10,92 C7,97 7,105 9,111 C10,113 12,114 15,114 L22,114 C25,114 26,111 25,107 L24,94 C21,91 13,90 10,92 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
+            <path d="M110,92 C113,97 113,105 111,111 C110,113 108,114 105,114 L98,114 C95,114 94,111 95,107 L96,94 C99,91 107,90 110,92 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
             <!-- Mãos -->
-            <ellipse cx="14" cy="116" rx="6" ry="5" fill="#c0906a" stroke="#a07040" stroke-width="0.5"/>
-            <ellipse cx="104" cy="116" rx="6" ry="5" fill="#c0906a" stroke="#a07040" stroke-width="0.5"/>
+            <path d="M8,114 C6,118 7,122 11,123 L20,123 C23,122 24,119 22,116 C19,113 12,112 8,114 Z" fill="#c2946a" stroke="#8f6039" stroke-width="0.5"/>
+            <path d="M112,114 C114,118 113,122 109,123 L100,123 C97,122 96,119 98,116 C101,113 108,112 112,114 Z" fill="#c2946a" stroke="#8f6039" stroke-width="0.5"/>
             <!-- Quadril -->
-            <path d="M33 108 Q30 112 30 118 L90 118 Q90 112 87 108 Z" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
+            <path d="M34,110 Q30,114 30,118 L90,118 Q90,114 86,110 Z" fill="#b88a5f" stroke="#8f6039" stroke-width="0.6"/>
             <!-- Coxas -->
-            <path d="M32 116 Q28 120 28 150 Q29 162 36 164 L54 164 Q60 162 60 150 L58 116 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M62 116 L60 150 Q60 162 66 164 L84 164 Q91 162 92 150 Q92 120 88 116 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
+            <path d="M31,116 C27,122 26,135 27,148 C28,157 31,163 37,165 L53,165 C57,163 59,157 58,149 L56,118 C51,114 40,114 35,115 C33,115 32,116 31,116 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
+            <path d="M89,116 C93,122 94,135 93,148 C92,157 89,163 83,165 L67,165 C63,163 61,157 62,149 L64,118 C69,114 80,114 85,115 C87,115 88,116 89,116 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
+            <line x1="44" y1="120" x2="42" y2="160" stroke="#8f6039" stroke-width="0.4" opacity="0.3"/>
+            <line x1="76" y1="120" x2="78" y2="160" stroke="#8f6039" stroke-width="0.4" opacity="0.3"/>
             <!-- Joelhos -->
-            <ellipse cx="42" cy="166" rx="12" ry="7" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
-            <ellipse cx="76" cy="166" rx="12" ry="7" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
+            <ellipse cx="42" cy="167" rx="11" ry="7" fill="#c2946a" stroke="#8f6039" stroke-width="0.6"/>
+            <ellipse cx="78" cy="167" rx="11" ry="7" fill="#c2946a" stroke="#8f6039" stroke-width="0.6"/>
             <!-- Pernas -->
-            <path d="M32 170 Q30 182 31 206 Q32 214 40 216 L50 216 Q56 214 56 206 L54 170 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M66 170 L64 206 Q64 214 70 216 L80 216 Q88 214 89 206 Q90 182 88 170 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
+            <path d="M33,173 C30,183 30,197 32,209 C33,214 37,217 41,217 L49,217 C53,217 55,213 55,208 L53,175 C49,172 37,172 34,173 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
+            <path d="M87,173 C90,183 90,197 88,209 C87,214 83,217 79,217 L71,217 C67,217 65,213 65,208 L67,175 C71,172 83,172 86,173 Z" fill="url(#skinG)" stroke="#8f6039" stroke-width="0.6"/>
             <!-- Pés -->
-            <path d="M30 214 Q28 220 32 224 L52 224 Q56 220 54 214 Z" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M66 214 Q64 220 68 224 L88 224 Q92 220 90 214 Z" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
+            <path d="M28,219 C26,223 27,228 32,230 L51,230 C55,228 56,223 53,219 C48,216 37,215 32,216 C30,217 29,218 28,219 Z" fill="#c2946a" stroke="#8f6039" stroke-width="0.6"/>
+            <path d="M92,219 C94,223 93,228 88,230 L69,230 C65,228 64,223 67,219 C72,216 83,215 88,216 C90,217 91,218 92,219 Z" fill="#c2946a" stroke="#8f6039" stroke-width="0.6"/>
 
             <!-- REGIÕES CLICÁVEIS transparentes -->
-            <ellipse data-region="Cabeça" cx="60" cy="18" rx="14" ry="16" fill="transparent" class="wmap-region" onclick="wmapClick(this)" style="cursor:pointer;"/>
+            <ellipse data-region="Cabeça" cx="60" cy="18" rx="13" ry="15" fill="transparent" class="wmap-region" onclick="wmapClick(this)" style="cursor:pointer;"/>
             <rect data-region="Peitoral E" x="35" y="42" width="25" height="34" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
             <rect data-region="Peitoral D" x="60" y="42" width="25" height="34" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
             <rect data-region="Abdômen" x="35" y="76" width="50" height="34" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Ombro E" cx="24" cy="50" rx="10" ry="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Ombro D" cx="96" cy="50" rx="10" ry="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Bíceps E" x="10" y="56" width="18" height="36" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Bíceps D" x="92" y="56" width="18" height="36" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Antebraço E" x="10" y="92" width="14" height="22" rx="3" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Antebraço D" x="96" y="92" width="14" height="22" rx="3" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Punho/Mão E" cx="14" cy="116" rx="6" ry="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Punho/Mão D" cx="104" cy="116" rx="6" ry="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Quadríceps E" x="30" y="116" width="28" height="46" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Quadríceps D" x="62" y="116" width="28" height="46" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Joelho E" cx="42" cy="166" rx="12" ry="7" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Joelho D" cx="76" cy="166" rx="12" ry="7" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Tibial E" x="31" y="172" width="22" height="42" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Tibial D" x="65" y="172" width="22" height="42" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <path data-region="Tornozelo/Pé E" d="M30 214 Q28 220 32 224 L52 224 Q56 220 54 214 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <path data-region="Tornozelo/Pé D" d="M66 214 Q64 220 68 224 L88 224 Q92 220 90 214 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Ombro E" cx="23" cy="49" rx="11" ry="9" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Ombro D" cx="97" cy="49" rx="11" ry="9" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Bíceps E" x="8" y="55" width="20" height="37" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Bíceps D" x="92" y="55" width="20" height="37" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Antebraço E" x="7" y="92" width="18" height="22" rx="3" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Antebraço D" x="95" y="92" width="18" height="22" rx="3" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Punho/Mão E" cx="14" cy="118" rx="8" ry="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Punho/Mão D" cx="106" cy="118" rx="8" ry="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Quadríceps E" x="26" y="114" width="33" height="52" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Quadríceps D" x="61" y="114" width="33" height="52" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Joelho E" cx="42" cy="167" rx="11" ry="7" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Joelho D" cx="78" cy="167" rx="11" ry="7" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Tibial E" x="30" y="172" width="26" height="45" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Tibial D" x="64" y="172" width="26" height="45" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <path data-region="Tornozelo/Pé E" d="M28,216 C26,221 27,227 32,230 L51,230 C55,227 56,222 53,218 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <path data-region="Tornozelo/Pé D" d="M92,216 C94,221 93,227 88,230 L69,230 C65,227 64,222 67,218 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
           </svg>
         </div>
 
         <!-- POSTERIOR -->
         <div style="text-align:center;flex:1;max-width:160px;">
           <div style="font-size:10px;color:var(--cinza-texto);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Posterior</div>
-          <svg viewBox="0 0 120 280" style="width:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 120 236" style="width:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <radialGradient id="skinG2" cx="60%" cy="35%"><stop offset="0%" stop-color="#d4a876"/><stop offset="100%" stop-color="#b8895a"/></radialGradient>
+              <radialGradient id="skinG2" cx="60%" cy="30%" r="80%">
+                <stop offset="0%" stop-color="#dcae80"/>
+                <stop offset="55%" stop-color="#c8946a"/>
+                <stop offset="100%" stop-color="#a3754c"/>
+              </radialGradient>
             </defs>
-            <ellipse cx="60" cy="18" rx="14" ry="16" fill="url(#skinG2)" stroke="#a07040" stroke-width="0.8"/>
-            <rect x="54" y="32" width="12" height="10" rx="3" fill="#c8966a" stroke="#a07040" stroke-width="0.5"/>
-            <path d="M35 42 Q28 45 26 58 L26 100 Q26 108 35 110 L85 110 Q94 108 94 100 L94 58 Q92 45 85 42 Z" fill="#c0906a" stroke="#a07040" stroke-width="0.8"/>
-            <ellipse cx="24" cy="50" rx="10" ry="8" fill="#b88858" stroke="#a07040" stroke-width="0.6"/>
-            <ellipse cx="96" cy="50" rx="10" ry="8" fill="#b88858" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M16 56 Q10 60 10 80 Q10 90 16 92 L24 92 Q28 90 28 80 L28 56 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M92 56 Q92 60 90 80 Q90 90 96 92 L104 92 Q110 90 110 80 L110 56 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M13 92 Q9 96 10 112 L18 112 Q22 110 22 96 L18 92 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M98 92 Q100 96 100 112 L108 112 Q110 110 110 96 L104 92 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <ellipse cx="14" cy="116" rx="6" ry="5" fill="#c0906a" stroke="#a07040" stroke-width="0.5"/>
-            <ellipse cx="104" cy="116" rx="6" ry="5" fill="#c0906a" stroke="#a07040" stroke-width="0.5"/>
-            <path d="M33 108 Q30 112 30 118 L90 118 Q90 112 87 108 Z" fill="#b08060" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M32 116 Q28 120 28 150 Q29 162 36 164 L54 164 Q60 162 60 150 L58 116 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M62 116 L60 150 Q60 162 66 164 L84 164 Q91 162 92 150 Q92 120 88 116 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <ellipse cx="42" cy="166" rx="12" ry="6" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
-            <ellipse cx="76" cy="166" rx="12" ry="6" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M32 170 Q30 182 31 206 Q32 214 40 216 L50 216 Q56 214 56 206 L54 170 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M66 170 L64 206 Q64 214 70 216 L80 216 Q88 214 89 206 Q90 182 88 170 Z" fill="#c8966a" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M30 214 Q28 220 32 224 L52 224 Q56 220 54 214 Z" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
-            <path d="M66 214 Q64 220 68 224 L88 224 Q92 220 90 214 Z" fill="#b88050" stroke="#a07040" stroke-width="0.6"/>
+            <!-- sombra de contato -->
+            <ellipse cx="60" cy="230" rx="26" ry="4" fill="#000" opacity="0.10"/>
+            <!-- Cabeça (cabelo cobrindo por trás) -->
+            <path d="M47,7 Q60,2 73,7 C76,12 76,20 73,26 Q73,12 60,9 Q47,12 47,26 C44,20 44,12 47,7 Z" fill="#4a3527"/>
+            <ellipse cx="60" cy="19" rx="12" ry="14" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.7"/>
+            <!-- Pescoço -->
+            <path d="M53,29 L67,29 L65,41 Q60,43.5 55,41 Z" fill="#bd8a5f" stroke="#8a5c34" stroke-width="0.5"/>
+            <!-- Tronco (trapézio + dorsais) -->
+            <path d="M35,40 C27,43 23,51 23,61 L23,82 C23,86 24,90 26,92 C24,95 23,98 23,101 C23,107 27,111 34,113 L86,113 C93,111 97,107 97,101 C97,98 96,95 94,92 C96,90 97,86 97,82 L97,61 C97,51 93,43 85,40 C81,47 72,52 60,52 C48,52 39,47 35,40 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.8"/>
+            <!-- coluna / linha central -->
+            <line x1="60" y1="52" x2="60" y2="110" stroke="#8a5c34" stroke-width="0.5" opacity="0.35"/>
+            <!-- asas do dorsal -->
+            <path d="M30,60 Q22,78 31,98" stroke="#8a5c34" stroke-width="0.5" opacity="0.3" fill="none"/>
+            <path d="M90,60 Q98,78 89,98" stroke="#8a5c34" stroke-width="0.5" opacity="0.3" fill="none"/>
+            <!-- covinhas lombares -->
+            <ellipse cx="52" cy="100" rx="3" ry="4" fill="#8a5c34" opacity="0.15"/>
+            <ellipse cx="68" cy="100" rx="3" ry="4" fill="#8a5c34" opacity="0.15"/>
+            <!-- Ombros -->
+            <ellipse cx="23" cy="49" rx="11" ry="9" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.7"/>
+            <ellipse cx="97" cy="49" rx="11" ry="9" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.7"/>
+            <!-- Braços (tríceps) -->
+            <path d="M13,55 C8,59 7,68 8,78 C9,86 11,90 16,92 L25,92 C28,90 29,86 28,78 L27,57 C24,53 17,52 13,55 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <path d="M107,55 C112,59 113,68 112,78 C111,86 109,90 104,92 L95,92 C92,90 91,86 92,78 L93,57 C96,53 103,52 107,55 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <!-- Antebraços -->
+            <path d="M10,92 C7,97 7,105 9,111 C10,113 12,114 15,114 L22,114 C25,114 26,111 25,107 L24,94 C21,91 13,90 10,92 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <path d="M110,92 C113,97 113,105 111,111 C110,113 108,114 105,114 L98,114 C95,114 94,111 95,107 L96,94 C99,91 107,90 110,92 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <!-- Mãos -->
+            <path d="M8,114 C6,118 7,122 11,123 L20,123 C23,122 24,119 22,116 C19,113 12,112 8,114 Z" fill="#bd8a5f" stroke="#8a5c34" stroke-width="0.5"/>
+            <path d="M112,114 C114,118 113,122 109,123 L100,123 C97,122 96,119 98,116 C101,113 108,112 112,114 Z" fill="#bd8a5f" stroke="#8a5c34" stroke-width="0.5"/>
+            <!-- Glúteos -->
+            <path d="M31,110 C25,114 24,122 26,130 C28,136 33,138 39,137 L54,136 C58,134 58,127 56,121 L54,112 C49,109 36,108 31,110 Z" fill="#b6835a" stroke="#8a5c34" stroke-width="0.6"/>
+            <path d="M89,110 C95,114 96,122 94,130 C92,136 87,138 81,137 L66,136 C62,134 62,127 64,121 L66,112 C71,109 84,108 89,110 Z" fill="#b6835a" stroke="#8a5c34" stroke-width="0.6"/>
+            <!-- Isquiotibiais -->
+            <path d="M28,133 C26,141 26,150 28,158 C29,163 33,166 38,166 L53,166 C57,166 59,162 57,156 L55,136 C50,133 33,132 28,133 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <path d="M92,133 C94,141 94,150 92,158 C91,163 87,166 82,166 L67,166 C63,166 61,162 63,156 L65,136 C70,133 87,132 92,133 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <line x1="44" y1="136" x2="42" y2="163" stroke="#8a5c34" stroke-width="0.4" opacity="0.3"/>
+            <line x1="76" y1="136" x2="78" y2="163" stroke="#8a5c34" stroke-width="0.4" opacity="0.3"/>
+            <!-- Fossa poplítea -->
+            <ellipse cx="42" cy="167" rx="11" ry="6" fill="#bd8a5f" stroke="#8a5c34" stroke-width="0.6"/>
+            <ellipse cx="78" cy="167" rx="11" ry="6" fill="#bd8a5f" stroke="#8a5c34" stroke-width="0.6"/>
+            <!-- Panturrilhas -->
+            <path d="M31,173 C27,180 26,192 28,204 C29,212 34,217 40,217 L48,217 C53,217 56,212 56,206 L54,176 C50,172 36,171 31,173 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <path d="M89,173 C93,180 94,192 92,204 C91,212 86,217 80,217 L72,217 C67,217 64,212 64,206 L66,176 C70,172 84,171 89,173 Z" fill="url(#skinG2)" stroke="#8a5c34" stroke-width="0.6"/>
+            <!-- Calcanhares -->
+            <path d="M29,219 C27,223 28,228 33,230 L50,230 C54,228 55,223 52,219 C48,216 37,215 33,216 C31,217 30,218 29,219 Z" fill="#b6835a" stroke="#8a5c34" stroke-width="0.6"/>
+            <path d="M91,219 C93,223 92,228 87,230 L70,230 C66,228 65,223 68,219 C72,216 83,215 87,216 C89,217 90,218 91,219 Z" fill="#b6835a" stroke="#8a5c34" stroke-width="0.6"/>
 
             <!-- REGIÕES CLICÁVEIS -->
-            <rect data-region="Cervical" x="50" y="30" width="20" height="14" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Trapézio E" x="35" y="42" width="25" height="28" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Trapézio D" x="60" y="42" width="25" height="28" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Lombar" x="38" y="72" width="44" height="38" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Ombro E (post.)" cx="24" cy="50" rx="10" ry="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Ombro D (post.)" cx="96" cy="50" rx="10" ry="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Tríceps E" x="10" y="58" width="18" height="34" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Tríceps D" x="92" y="58" width="18" height="34" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Glúteo E" x="30" y="110" width="28" height="38" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Glúteo D" x="62" y="110" width="28" height="38" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Isquiotibial E" x="30" y="148" width="28" height="36" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Isquiotibial D" x="62" y="148" width="28" height="36" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Fossa Poplítea E" cx="42" cy="166" rx="12" ry="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <ellipse data-region="Fossa Poplítea D" cx="76" cy="166" rx="12" ry="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Panturrilha E" x="31" y="172" width="22" height="40" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <rect data-region="Panturrilha D" x="65" y="172" width="22" height="40" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <path data-region="Calcâneo E" d="M30 214 Q28 220 32 224 L52 224 Q56 220 54 214 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
-            <path data-region="Calcâneo D" d="M66 214 Q64 220 68 224 L88 224 Q92 220 90 214 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Cervical" x="50" y="29" width="20" height="14" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Trapézio E" x="35" y="40" width="25" height="28" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Trapézio D" x="60" y="40" width="25" height="28" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Lombar" x="36" y="70" width="48" height="40" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Ombro E (post.)" cx="23" cy="49" rx="11" ry="9" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Ombro D (post.)" cx="97" cy="49" rx="11" ry="9" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Tríceps E" x="8" y="55" width="20" height="37" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Tríceps D" x="92" y="55" width="20" height="37" rx="4" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Glúteo E" x="25" y="108" width="32" height="30" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Glúteo D" x="63" y="108" width="32" height="30" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Isquiotibial E" x="27" y="133" width="30" height="33" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Isquiotibial D" x="63" y="133" width="30" height="33" rx="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Fossa Poplítea E" cx="42" cy="167" rx="11" ry="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <ellipse data-region="Fossa Poplítea D" cx="78" cy="167" rx="11" ry="6" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Panturrilha E" x="26" y="172" width="30" height="45" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <rect data-region="Panturrilha D" x="64" y="172" width="30" height="45" rx="5" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <path data-region="Calcâneo E" d="M29,216 C27,221 28,227 33,230 L50,230 C54,227 55,222 52,218 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+            <path data-region="Calcâneo D" d="M91,216 C93,221 92,227 87,230 L70,230 C66,227 65,222 68,218 Z" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
           </svg>
         </div>
       </div>
@@ -1795,47 +1840,6 @@ body.dark-mode #topbar {
       <div id="wmap-lista" style="margin-top:8px;"></div>
       <input type="hidden" id="w-dores" value="[]">
     </div>
-            <!-- Corpo base -->
-            <ellipse cx="80" cy="22" rx="18" ry="20" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- cabeça -->
-            <rect x="60" y="44" width="40" height="10" rx="5" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- pescoço -->
-            <rect x="40" y="54" width="80" height="70" rx="10" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- tronco -->
-            <rect x="20" y="56" width="22" height="60" rx="8" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- braço E -->
-            <rect x="118" y="56" width="22" height="60" rx="8" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- braço D -->
-            <rect x="16" y="114" width="18" height="40" rx="6" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- antebraço E -->
-            <rect x="126" y="114" width="18" height="40" rx="6" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- antebraço D -->
-            <rect x="14" y="152" width="16" height="18" rx="4" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- mão E -->
-            <rect x="130" y="152" width="16" height="18" rx="4" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- mão D -->
-            <rect x="48" y="124" width="28" height="80" rx="8" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- coxa E -->
-            <rect x="84" y="124" width="28" height="80" rx="8" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- coxa D -->
-            <rect x="50" y="202" width="24" height="70" rx="6" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- perna E -->
-            <rect x="86" y="202" width="24" height="70" rx="6" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- perna D -->
-            <rect x="49" y="270" width="22" height="16" rx="4" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- pé E -->
-            <rect x="89" y="270" width="22" height="16" rx="4" fill="#c8a882" stroke="#999" stroke-width="1"/> <!-- pé D -->
-
-            <!-- Regiões clicáveis -->
-            <ellipse data-region="Cabeça" cx="80" cy="22" rx="18" ry="20" fill="transparent" stroke="transparent" stroke-width="2" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Peitoral E" x="40" y="54" width="40" height="35" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Peitoral D" x="80" y="54" width="40" height="35" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Abdômen" x="40" y="89" width="80" height="35" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Ombro E" x="20" y="54" width="22" height="22" rx="8" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Ombro D" x="118" y="54" width="22" height="22" rx="8" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Bíceps E" x="20" y="76" width="22" height="40" rx="6" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Bíceps D" x="118" y="76" width="22" height="40" rx="6" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Antebraço E" x="16" y="114" width="18" height="40" rx="6" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Antebraço D" x="126" y="114" width="18" height="40" rx="6" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Punho/Mão E" x="14" y="152" width="16" height="18" rx="4" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Punho/Mão D" x="130" y="152" width="16" height="18" rx="4" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Quadríceps E" x="48" y="124" width="28" height="40" rx="6" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Quadríceps D" x="84" y="124" width="28" height="40" rx="6" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Joelho E" x="49" y="162" width="26" height="22" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Joelho D" x="85" y="162" width="26" height="22" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Tibial E" x="50" y="202" width="24" height="50" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Tibial D" x="86" y="202" width="24" height="50" rx="5" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Tornozelo/Pé E" x="49" y="252" width="22" height="34" rx="4" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-            <rect data-region="Tornozelo/Pé D" x="89" y="252" width="22" height="34" rx="4" fill="transparent" onclick="wmapClick(this)" class="wmap-region"/>
-          </svg>
-        </div>
-
 
       <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:8px;">💧 Cor da Urina (Hidratação)</div>
       <div class="urina-row" id="w-urina-row">
