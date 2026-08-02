@@ -1669,45 +1669,65 @@ body.dark-mode #topbar {
           <svg viewBox="0 0 120 236" style="width:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
             <!-- sombra de contato -->
             <ellipse cx="60" cy="230" rx="26" ry="4" fill="#000" opacity="0.06"/>
-            <g fill="none" stroke="#55565c" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round">
+            <g fill="none" stroke="#333333" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round">
               <!-- Cabelo -->
               <path d="M47,11 Q60,2 73,11"/>
               <!-- Cabeça -->
               <ellipse cx="60" cy="19" rx="12.5" ry="15"/>
               <!-- Pescoço -->
-              <path d="M54,32 L53,41 M66,32 L67,41"/>
+              <path d="M53,33 C53,37 54,40 56,41 M67,33 C67,37 66,40 64,41"/>
               <!-- Tronco -->
-              <path d="M38,41 C29,44 25,52 25,61 L25,82 C25,86 26,90 28,92 C26,95 25,98 25,101 C25,107 29,110 36,112 L84,112 C91,110 95,107 95,101 C95,98 94,95 92,92 C94,90 95,86 95,82 L95,61 C95,52 91,44 82,41 C80,48 76,54 70,57 C64,60 56,60 50,57 C44,54 40,48 38,41 Z" stroke-width="1.2"/>
-              <!-- clavícula + linha central -->
-              <path d="M43,45 Q60,50 77,45" stroke-width="0.6" opacity="0.55"/>
-              <line x1="60" y1="59" x2="60" y2="107" stroke-width="0.6" opacity="0.4"/>
-              <path d="M34,79 Q42,91 36,103" stroke-width="0.5" opacity="0.35"/>
-              <path d="M86,79 Q78,91 84,103" stroke-width="0.5" opacity="0.35"/>
-              <!-- Ombros -->
+              <path d="M38,41 C29,44 25,52 25,61 L25,82 C25,86 26,90 28,92 C26,95 25,98 25,101 C25,107 29,110 36,112 L84,112 C91,110 95,107 95,101 C95,98 94,95 92,92 C94,90 95,86 95,82 L95,61 C95,52 91,44 82,41 C80,48 76,54 70,57 C64,60 56,60 50,57 C44,54 40,48 38,41 Z" stroke-width="1.3"/>
+              <!-- peitoral -->
+              <path d="M30,64 C36,72 46,75 58,73" stroke-width="0.85"/>
+              <path d="M90,64 C84,72 74,75 62,73" stroke-width="0.85"/>
+              <!-- linha esterno / abdominal -->
+              <line x1="60" y1="46" x2="60" y2="108" stroke-width="0.7" opacity="0.7"/>
+              <!-- gomos do abdomen -->
+              <path d="M46,78 L46,106 M74,78 L74,106" stroke-width="0.6" opacity="0.65"/>
+              <path d="M40,86 L80,86 M40,96 L80,96 M42,106 L78,106" stroke-width="0.6" opacity="0.65"/>
+              <!-- obliquos -->
+              <path d="M32,80 Q40,93 34,105" stroke-width="0.6" opacity="0.55"/>
+              <path d="M88,80 Q80,93 86,105" stroke-width="0.6" opacity="0.55"/>
+              <!-- Ombros (deltoide) -->
               <ellipse cx="24" cy="50" rx="11" ry="9"/>
               <ellipse cx="96" cy="50" rx="11" ry="9"/>
-              <!-- Braços -->
+              <path d="M18,44 Q24,52 20,58" stroke-width="0.6" opacity="0.55"/>
+              <path d="M102,44 Q96,52 100,58" stroke-width="0.6" opacity="0.55"/>
+              <!-- Braços (biceps) -->
               <path d="M14,56 C9,60 8,69 9,79 C10,87 12,91 17,93 L26,93 C29,91 30,87 29,79 L28,58 C25,54 18,53 14,56 Z"/>
               <path d="M106,56 C111,60 112,69 111,79 C110,87 108,91 103,93 L94,93 C91,91 90,87 91,79 L92,58 C95,54 102,53 106,56 Z"/>
+              <path d="M14,62 C11,68 11,76 14,84" stroke-width="0.6" opacity="0.6"/>
+              <path d="M106,62 C109,68 109,76 106,84" stroke-width="0.6" opacity="0.6"/>
               <!-- Antebraços -->
               <path d="M11,93 C8,98 8,106 10,112 C11,114 13,115 16,115 L23,115 C26,115 27,112 26,108 L25,95 C22,92 14,91 11,93 Z"/>
               <path d="M109,93 C112,98 112,106 110,112 C109,114 107,115 104,115 L97,115 C94,115 93,112 94,108 L95,95 C98,92 106,91 109,93 Z"/>
+              <path d="M13,95 L14,111 M22,95 L21,111" stroke-width="0.5" opacity="0.5"/>
+              <path d="M107,95 L106,111 M98,95 L99,111" stroke-width="0.5" opacity="0.5"/>
               <!-- Mãos -->
               <path d="M7,113 C4,117 5,122 9,124 C12,125 16,124 18,121 C19,118 18,114 15,112 C12,111 9,111 7,113 Z"/>
               <path d="M9,111 L7,105 M12,110 L11,104 M15,111 L16,105" stroke-width="0.8"/>
               <path d="M113,113 C116,117 115,122 111,124 C108,125 104,124 102,121 C101,118 102,114 105,112 C108,111 111,111 113,113 Z"/>
               <path d="M111,111 L113,105 M108,110 L109,104 M105,111 L104,105" stroke-width="0.8"/>
-              <!-- Coxas -->
+              <!-- Coxas (quadríceps) -->
               <path d="M32,117 C28,123 27,136 28,149 C29,158 32,164 38,166 L52,166 C56,164 58,158 57,150 L55,119 C50,115 39,115 34,116 C33,116 32,117 32,117 Z"/>
               <path d="M88,117 C92,123 93,136 92,149 C91,158 88,164 82,166 L68,166 C64,164 62,158 63,150 L65,119 C70,115 81,115 86,116 C87,116 88,117 88,117 Z"/>
-              <line x1="45" y1="121" x2="43" y2="161" stroke-width="0.45" opacity="0.3"/>
-              <line x1="75" y1="121" x2="77" y2="161" stroke-width="0.45" opacity="0.3"/>
+              <path d="M45,120 C43,135 42,150 43,163" stroke-width="0.55" opacity="0.6"/>
+              <path d="M75,120 C77,135 78,150 77,163" stroke-width="0.55" opacity="0.6"/>
+              <path d="M33,124 Q30,142 36,160" stroke-width="0.5" opacity="0.45"/>
+              <path d="M87,124 Q90,142 84,160" stroke-width="0.5" opacity="0.45"/>
+              <path d="M53,128 Q56,145 51,162" stroke-width="0.5" opacity="0.45"/>
+              <path d="M67,128 Q64,145 69,162" stroke-width="0.5" opacity="0.45"/>
               <!-- Joelhos -->
               <ellipse cx="42" cy="168" rx="10.5" ry="6.5"/>
               <ellipse cx="78" cy="168" rx="10.5" ry="6.5"/>
-              <!-- Pernas -->
+              <!-- Pernas (panturrilha/tibial) -->
               <path d="M34,174 C31,184 30,197 32,208 C33,213 37,216 41,216 L48,216 C52,216 55,212 55,207 L53,177 C49,173 38,172 34,174 Z"/>
               <path d="M86,174 C89,184 90,197 88,208 C87,213 83,216 79,216 L72,216 C68,216 65,212 65,207 L67,177 C71,173 82,172 86,174 Z"/>
+              <path d="M37,178 Q33,192 37,206" stroke-width="0.55" opacity="0.55"/>
+              <path d="M83,178 Q87,192 83,206" stroke-width="0.55" opacity="0.55"/>
+              <line x1="42" y1="176" x2="42" y2="212" stroke-width="0.5" opacity="0.4"/>
+              <line x1="78" y1="176" x2="78" y2="212" stroke-width="0.5" opacity="0.4"/>
               <!-- Pés -->
               <path d="M28,218 C26,222 27,227 32,229 L50,229 C54,227 55,223 52,219 C47,216 37,215 32,216 C30,217 29,217 28,218 Z"/>
               <path d="M92,218 C94,222 93,227 88,229 L70,229 C66,227 65,223 68,219 C73,216 83,215 88,216 C90,217 91,217 92,218 Z"/>
@@ -1743,26 +1763,31 @@ body.dark-mode #topbar {
           <svg viewBox="0 0 120 236" style="width:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
             <!-- sombra de contato -->
             <ellipse cx="60" cy="230" rx="26" ry="4" fill="#000" opacity="0.06"/>
-            <g fill="none" stroke="#55565c" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round">
+            <g fill="none" stroke="#333333" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round">
               <!-- Cabelo (cobre a nuca) -->
               <path d="M47,10 C46,15 46,22 48,28 Q47,17 60,13 Q73,17 72,28 C74,22 74,15 73,10 Q60,2 47,10 Z"/>
               <!-- Cabeça -->
               <ellipse cx="60" cy="19" rx="12" ry="14.5"/>
               <!-- Pescoço -->
-              <path d="M54,32 L53,41 M66,32 L67,41"/>
-              <!-- Tronco (trapézio + dorsais) -->
-              <path d="M36,41 C28,44 24,52 24,61 L24,82 C24,86 25,90 27,92 C25,95 24,98 24,101 C24,107 28,110 35,112 L85,112 C92,110 96,107 96,101 C96,98 95,95 93,92 C95,90 96,86 96,82 L96,61 C96,52 92,44 84,41 C80,48 71,53 60,53 C49,53 40,48 36,41 Z" stroke-width="1.2"/>
-              <!-- coluna / linha central -->
-              <line x1="60" y1="53" x2="60" y2="109" stroke-width="0.6" opacity="0.4"/>
+              <path d="M53,33 C53,37 54,40 56,41 M67,33 C67,37 66,40 64,41"/>
+              <!-- Tronco -->
+              <path d="M36,41 C28,44 24,52 24,61 L24,82 C24,86 25,90 27,92 C25,95 24,98 24,101 C24,107 28,110 35,112 L85,112 C92,110 96,107 96,101 C96,98 95,95 93,92 C95,90 96,86 96,82 L96,61 C96,52 92,44 84,41 C80,48 71,53 60,53 C49,53 40,48 36,41 Z" stroke-width="1.3"/>
+              <!-- trapézio: losango do pescoço até o meio das costas -->
+              <path d="M60,41 L38,58 M60,41 L82,58 M46,100 L60,80 L74,100" stroke-width="0.8"/>
+              <!-- coluna / eretores -->
+              <line x1="60" y1="58" x2="60" y2="109" stroke-width="0.7" opacity="0.7"/>
+              <path d="M56,64 L56,104 M64,64 L64,104" stroke-width="0.5" opacity="0.5"/>
               <!-- asas do dorsal -->
-              <path d="M31,61 Q23,79 32,99" stroke-width="0.5" opacity="0.35"/>
-              <path d="M89,61 Q97,79 88,99" stroke-width="0.5" opacity="0.35"/>
+              <path d="M31,61 Q23,79 32,99" stroke-width="0.6" opacity="0.55"/>
+              <path d="M89,61 Q97,79 88,99" stroke-width="0.6" opacity="0.55"/>
               <!-- Ombros -->
               <ellipse cx="24" cy="50" rx="11" ry="9"/>
               <ellipse cx="96" cy="50" rx="11" ry="9"/>
-              <!-- Braços -->
+              <!-- Braços (tríceps) -->
               <path d="M14,56 C9,60 8,69 9,79 C10,87 12,91 17,93 L26,93 C29,91 30,87 29,79 L28,58 C25,54 18,53 14,56 Z"/>
               <path d="M106,56 C111,60 112,69 111,79 C110,87 108,91 103,93 L94,93 C91,91 90,87 91,79 L92,58 C95,54 102,53 106,56 Z"/>
+              <path d="M15,64 Q19,72 15,82" stroke-width="0.55" opacity="0.55"/>
+              <path d="M105,64 Q101,72 105,82" stroke-width="0.55" opacity="0.55"/>
               <!-- Antebraços -->
               <path d="M11,93 C8,98 8,106 10,112 C11,114 13,115 16,115 L23,115 C26,115 27,112 26,108 L25,95 C22,92 14,91 11,93 Z"/>
               <path d="M109,93 C112,98 112,106 110,112 C109,114 107,115 104,115 L97,115 C94,115 93,112 94,108 L95,95 C98,92 106,91 109,93 Z"/>
@@ -1774,17 +1799,23 @@ body.dark-mode #topbar {
               <!-- Glúteos -->
               <path d="M32,109 C25,113 24,122 26,130 C28,136 34,138 40,137 L55,136 C59,134 59,127 57,121 L55,111 C50,108 37,107 32,109 Z"/>
               <path d="M88,109 C95,113 96,122 94,130 C92,136 86,138 80,137 L65,136 C61,134 61,127 63,121 L65,111 C70,108 83,107 88,109 Z"/>
+              <path d="M42,113 Q38,124 44,134" stroke-width="0.5" opacity="0.5"/>
+              <path d="M78,113 Q82,124 76,134" stroke-width="0.5" opacity="0.5"/>
               <!-- Isquiotibiais -->
               <path d="M29,132 C27,140 27,150 29,158 C30,163 34,166 39,166 L53,166 C57,166 59,162 57,156 L55,136 C50,133 34,132 29,132 Z"/>
               <path d="M91,132 C93,140 93,150 91,158 C90,163 86,166 81,166 L67,166 C63,166 61,162 63,156 L65,136 C70,133 86,132 91,132 Z"/>
-              <line x1="45" y1="136" x2="43" y2="163" stroke-width="0.45" opacity="0.3"/>
-              <line x1="75" y1="136" x2="77" y2="163" stroke-width="0.45" opacity="0.3"/>
+              <path d="M38,138 L37,161 M48,138 L49,161" stroke-width="0.45" opacity="0.45"/>
+              <path d="M82,138 L83,161 M72,138 L71,161" stroke-width="0.45" opacity="0.45"/>
               <!-- Fossa poplítea -->
               <ellipse cx="42" cy="168" rx="10.5" ry="5.5"/>
               <ellipse cx="78" cy="168" rx="10.5" ry="5.5"/>
               <!-- Panturrilhas -->
               <path d="M32,174 C28,181 27,193 29,205 C30,213 35,217 41,217 L48,217 C53,217 56,213 56,207 L54,177 C50,173 37,172 32,174 Z"/>
               <path d="M88,174 C92,181 93,193 91,205 C90,213 85,217 79,217 L72,217 C67,217 64,213 64,207 L66,177 C70,173 83,172 88,174 Z"/>
+              <path d="M36,178 Q33,190 38,200" stroke-width="0.5" opacity="0.5"/>
+              <path d="M46,178 Q49,190 44,200" stroke-width="0.5" opacity="0.5"/>
+              <path d="M84,178 Q87,190 82,200" stroke-width="0.5" opacity="0.5"/>
+              <path d="M74,178 Q71,190 76,200" stroke-width="0.5" opacity="0.5"/>
               <!-- Calcanhares -->
               <path d="M29,219 C27,223 28,227 33,229 L49,229 C53,227 54,223 51,220 C47,217 37,216 33,217 C31,217 30,218 29,219 Z"/>
               <path d="M91,219 C93,223 92,227 87,229 L71,229 C67,227 66,223 69,220 C73,217 83,216 87,217 C89,217 90,218 91,219 Z"/>
