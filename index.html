@@ -1018,7 +1018,8 @@ body.dark-mode #topbar {
     <div class="topbar-actions">
       <div class="cat-selector" id="cat-selector">
         <button class="cat-btn active" id="cat-prof" onclick="setCategoria('Profissional')">Profissional</button>
-        <button class="cat-btn" id="cat-base" onclick="setCategoria('Base')">Base</button>
+        <button class="cat-btn" id="cat-sub14" onclick="setCategoria('Sub-14')">Sub-14</button>
+        <button class="cat-btn" id="cat-sub16" onclick="setCategoria('Sub-16')">Sub-16</button>
       </div>
       <button class="btn btn-ghost" onclick="toggleTheme()">🌙/☀️</button>
       <input type="text" id="search-bar" placeholder="Buscar atleta..." oninput="handleSearch(this.value)" style="display:none">
@@ -1450,7 +1451,8 @@ body.dark-mode #topbar {
         <label>Categoria</label>
         <select class="form-control" id="f-categoria">
           <option value="Profissional">Profissional</option>
-          <option value="Base">Base</option>
+          <option value="Sub-14">Sub-14</option>
+          <option value="Sub-16">Sub-16</option>
         </select>
       </div>
     </div>
@@ -1999,7 +2001,7 @@ async function dbDelete(table, id) {
 
 // -- STATE -------------------------------------------------------------
 let currentSection = 'dashboard';
-let currentCategoria = 'Profissional'; // 'Profissional' | 'Base'
+let currentCategoria = 'Profissional'; // 'Profissional' | 'Sub-14' | 'Sub-16'
 let currentAthleteId = null;
 let editingAthleteId = null;
 let editingSessionId = null;
@@ -2012,7 +2014,8 @@ let atletasSortMode = 'posicao';
 function setCategoria(cat) {
   currentCategoria = cat;
   document.getElementById('cat-prof').classList.toggle('active', cat === 'Profissional');
-  document.getElementById('cat-base').classList.toggle('active', cat === 'Base');
+  document.getElementById('cat-sub14').classList.toggle('active', cat === 'Sub-14');
+  document.getElementById('cat-sub16').classList.toggle('active', cat === 'Sub-16');
   const sel = document.getElementById('f-categoria');
   if (sel) sel.value = cat;
   if (currentSection === 'dashboard') renderDashboard();
@@ -2203,7 +2206,7 @@ async function renderDashboardAlertas(athletes) {
 
   const alertas = [];
 
-  athletes.filter(a => a.status === 'ativo' && (a.categoria || 'Profissional') !== 'Base').forEach(a => {
+  athletes.filter(a => a.status === 'ativo' && (a.categoria || 'Profissional') === 'Profissional').forEach(a => {
     const hist = allMon.filter(m => m.athleteId == a.id).sort((x,y) => y.data.localeCompare(x.data));
 
     // Hooper de hoje
@@ -3193,7 +3196,7 @@ async function loadAtletasSelect(selId) {
   const athletes = await dbGetAll('athletes');
   const sel = document.getElementById(selId);
   sel.innerHTML = '<option value="">Selecione seu nome...</option>' +
-    athletes.filter(a => a.status === 'ativo' && (a.categoria || 'Profissional') !== 'Base')
+    athletes.filter(a => a.status === 'ativo' && (a.categoria || 'Profissional') === 'Profissional')
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 }
