@@ -2208,7 +2208,7 @@ async function renderDashboardAlertas(athletes) {
 
     // Hooper de hoje
     const monHoje = hist.find(m => m.data === today);
-    if (monHoje?.hooper && monHoje.hooper < 11) {
+    if (monHoje?.hooper && monHoje.hooper <= 11) {
       alertas.push({
         tipo: 'hooper',
         atletaId: a.id,
@@ -2216,6 +2216,43 @@ async function renderDashboardAlertas(athletes) {
         foto: a.foto,
         msg: `Hooper baixo hoje: ${monHoje.hooper}/25`,
         detalhe: 'Baixa prontidão para o treino',
+        cor: 'var(--perigo)'
+      });
+    }
+
+    // Parâmetro individual do Hooper muito baixo (escala 1-5, 3=normal)
+    if (monHoje) {
+      const paramsHoje = [
+        { label: 'Sono', val: monHoje.sono },
+        { label: 'Dor', val: monHoje.dor },
+        { label: 'Fadiga', val: monHoje.fadiga },
+        { label: 'Humor', val: monHoje.humor },
+        { label: 'Estresse', val: monHoje.estresse },
+      ];
+      paramsHoje.forEach(p => {
+        if (p.val !== null && p.val !== undefined && p.val <= 2) {
+          alertas.push({
+            tipo: 'parametro',
+            atletaId: a.id,
+            nome: a.apelido || a.nome,
+            foto: a.foto,
+            msg: `${p.label} muito baixo hoje: ${p.val}/5`,
+            detalhe: 'Parâmetro individual em alerta',
+            cor: 'var(--perigo)'
+          });
+        }
+      });
+    }
+
+    // Hidratação crítica de hoje
+    if (monHoje?.hidratacao && monHoje.hidratacao >= 5) {
+      alertas.push({
+        tipo: 'hidratacao',
+        atletaId: a.id,
+        nome: a.apelido || a.nome,
+        foto: a.foto,
+        msg: `Hidratação crítica hoje: ${URINA_NOMES[monHoje.hidratacao] || monHoje.hidratacao}`,
+        detalhe: 'Nível de hidratação preocupante',
         cor: 'var(--perigo)'
       });
     }
@@ -2258,7 +2295,7 @@ async function renderDashboardAlertas(athletes) {
       <h3 style="font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">⚡ Alertas <span style="background:var(--perigo);color:#fff;border-radius:20px;padding:2px 8px;font-size:11px;">${alertas.length}</span></h3>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${alertas.map(al => `
-          <div onclick="openAthleteDetail(${al.atletaId})" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--cinza-fundo);border:1px solid ${al.cor}33;border-left:3px solid ${al.cor};border-radius:8px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='var(--cinza-borda)'" onmouseout="this.style.background='var(--cinza-fundo)'">
+          <div onclick="showSection('monitoramento')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--cinza-fundo);border:1px solid ${al.cor}33;border-left:3px solid ${al.cor};border-radius:8px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='var(--cinza-borda)'" onmouseout="this.style.background='var(--cinza-fundo)'">
             <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--cinza-borda);display:flex;align-items:center;justify-content:center;">
               ${al.foto ? `<img src="${al.foto}" style="width:100%;height:100%;object-fit:cover;">` : '⚽'}
             </div>
@@ -3268,9 +3305,9 @@ function acwrBadge(acwr) {
 
 function hooперBadge(h, m) {
   if (!h) return '—';
-  const cl = h >= 18 ? 'mon-verde' : h >= 11 ? 'mon-amarelo' : 'mon-vermelho';
+  const cl = h >= 18 ? 'mon-verde' : h > 11 ? 'mon-amarelo' : 'mon-vermelho';
 
-  // Indicadores de alerta (parâmetros abaixo de 3)
+  // Indicadores de alerta (parâmetros em 1-5, <=2 é considerado baixo; 3=normal)
   const params = [
     { label: 'Sono', val: m?.sono },
     { label: 'Dor', val: m?.dor },
@@ -3278,11 +3315,11 @@ function hooперBadge(h, m) {
     { label: 'Humor', val: m?.humor },
     { label: 'Estresse', val: m?.estresse },
   ];
-  const temAlerta = params.some(p => p.val !== null && p.val !== undefined && p.val < 3);
+  const temAlerta = params.some(p => p.val !== null && p.val !== undefined && p.val <= 2);
 
   // Tooltip com valores individuais
   const tooltipRows = params.map(p => {
-    const alert = p.val !== null && p.val !== undefined && p.val < 3;
+    const alert = p.val !== null && p.val !== undefined && p.val <= 2;
     const color = alert ? '#e0282e' : p.val >= 4 ? '#00c853' : '#ffab00';
     return `<div style="display:flex;justify-content:space-between;gap:16px;padding:2px 0;">
       <span style="color:#aaa;">${p.label}</span>
@@ -3350,7 +3387,7 @@ async function renderMonitoramento() {
 
   const preencheram = monDia.filter(m => m.preenchido_pre).length;
   const total = athletes.filter(a => a.status === 'ativo').length;
-  const alertas = monDia.filter(m => m.hooper && m.hooper < 11).length;
+  const alertas = monDia.filter(m => m.hooper && m.hooper <= 11).length;
 
   resumoEl.innerHTML = `
     <div class="stats-grid" style="margin-bottom:16px;">
