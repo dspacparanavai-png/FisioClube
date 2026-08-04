@@ -2274,7 +2274,7 @@ async function renderDashboardAlertas(athletes) {
 
   const alertas = [];
 
-  athletes.filter(a => a.status === 'ativo' && (a.categoria || 'Profissional') === 'Profissional').forEach(a => {
+  athletes.filter(a => (a.status === 'ativo' || a.status === 'afastado') && (a.categoria || 'Profissional') === 'Profissional').forEach(a => {
     const hist = allMon.filter(m => m.athleteId == a.id).sort((x,y) => y.data.localeCompare(x.data));
 
     // Hooper de hoje
@@ -2530,6 +2530,16 @@ async function openAthleteDetail(id) {
   const sessions = await dbGetByIndex('sessions', 'athleteId', id);
   sessions.sort((x, y) => y.data.localeCompare(x.data));
 
+  const monHist = (await dbGetByIndex('monitoring', 'athleteId', id)).sort((x,y) => y.data.localeCompare(x.data));
+  let ultimoComDor = null;
+  for (const m of monHist) {
+    if (!m.dores_localizadas) continue;
+    try {
+      const d = typeof m.dores_localizadas === 'string' ? JSON.parse(m.dores_localizadas) : m.dores_localizadas;
+      if (d && Object.keys(d).length > 0) { ultimoComDor = { data: m.data, dores: d }; break; }
+    } catch(e) {}
+  }
+
   // Show detail view
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.getElementById('view-detalhe').classList.add('active');
@@ -2571,6 +2581,16 @@ async function openAthleteDetail(id) {
         </div>
       </div>
     </div>
+
+    ${ultimoComDor ? `
+    <div class="sessions-section" style="margin-bottom:20px;">
+      <div class="sessions-header">
+        <h3>🩺 Mapa de Dor — último registro (${formatDate(ultimoComDor.data)})</h3>
+      </div>
+      <div style="padding:16px;">
+        ${wmapRenderReadOnly(ultimoComDor.dores)}
+      </div>
+    </div>` : ''}
 
     <div class="sessions-section">
       <div class="sessions-header">
@@ -3264,7 +3284,7 @@ async function loadAtletasSelect(selId) {
   const athletes = await dbGetAll('athletes');
   const sel = document.getElementById(selId);
   sel.innerHTML = '<option value="">Selecione seu nome...</option>' +
-    athletes.filter(a => a.status === 'ativo' && (a.categoria || 'Profissional') === 'Profissional')
+    athletes.filter(a => (a.status === 'ativo' || a.status === 'afastado') && (a.categoria || 'Profissional') === 'Profissional')
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 }
@@ -3457,7 +3477,7 @@ async function renderMonitoramento() {
   const listaEl = document.getElementById('mon-lista');
 
   const preencheram = monDia.filter(m => m.preenchido_pre).length;
-  const total = athletes.filter(a => a.status === 'ativo').length;
+  const total = athletes.filter(a => a.status === 'ativo' || a.status === 'afastado').length;
   const alertas = monDia.filter(m => m.hooper && m.hooper <= 11).length;
 
   resumoEl.innerHTML = `
@@ -3468,7 +3488,7 @@ async function renderMonitoramento() {
       <div class="stat-card"><div class="stat-label">PSE recebidos</div><div class="stat-value">${monDia.filter(m=>m.preenchido_pos).length}</div></div>
     </div>`;
 
-  const ativos = athletes.filter(a => a.status === 'ativo').sort((a,b)=>(a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'));
+  const ativos = athletes.filter(a => a.status === 'ativo' || a.status === 'afastado').sort((a,b)=>(a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'));
 
   listaEl.innerHTML = `
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">Wellness</div>
@@ -3485,10 +3505,10 @@ async function renderMonitoramento() {
             const dores = typeof m.dores_localizadas === 'string' ? JSON.parse(m.dores_localizadas) : m.dores_localizadas;
             const entries = Object.entries(dores);
             if (entries.length > 0) {
-              doresHtml = entries.map(([reg, nivel]) => {
+              doresHtml = `<div style="display:flex;flex-wrap:wrap;gap:4px;">` + entries.map(([reg, nivel]) => {
                 const cor = nivel <= 3 ? '#ffeb3b' : nivel <= 6 ? '#ff9800' : '#e0282e';
-                return `<span title="${reg}: ${nivel}/10" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cor};margin:1px;"></span>`;
-              }).join('') + `<span style="font-size:10px;color:var(--cinza-texto);margin-left:4px;">${entries.length}</span>`;
+                return `<span style="display:inline-flex;align-items:center;gap:3px;background:${cor}22;border:1px solid ${cor};border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:${cor};display:inline-block;"></span>${reg} ${nivel}</span>`;
+              }).join('') + `</div>`;
             }
           } catch(e) {}
         }
@@ -3553,6 +3573,75 @@ window.closeWellnessTooltip = closeWellnessTooltip;
 let wmapDores = {};
 let wmapRegionAtiva = null;
 let wmapElementoAtivo = null;
+const WMAP_IMG_URL = 'https://zopczkxnxjehfizubhew.supabase.co/storage/v1/object/public/Fotos/mapa_dor.png';
+const WMAP_REGIONS_DATA = [
+  {l:'Cabeça',t:'ellipse',cx:513,cy:197,rx:101,ry:142},
+  {l:'Abdômen',t:'rect',x:355,y:650,w:322,h:500},
+  {l:'Peitoral D',t:'rect',x:355,y:430,w:161,h:230},
+  {l:'Peitoral E',t:'rect',x:516,y:430,w:161,h:230},
+  {l:'Ombro D',t:'ellipse',cx:260,cy:460,rx:95,ry:85},
+  {l:'Ombro E',t:'ellipse',cx:772,cy:460,rx:95,ry:85},
+  {l:'Bíceps D',t:'rect',x:215,y:545,w:170,h:235},
+  {l:'Bíceps E',t:'rect',x:647,y:545,w:170,h:235},
+  {l:'Antebraço D',t:'rect',x:175,y:780,w:165,h:220},
+  {l:'Antebraço E',t:'rect',x:692,y:780,w:165,h:220},
+  {l:'Punho/Mão D',t:'ellipse',cx:202,cy:1105,rx:127,ry:110},
+  {l:'Punho/Mão E',t:'ellipse',cx:830,cy:1105,rx:127,ry:110},
+  {l:'Quadríceps D',t:'rect',x:310,y:1145,w:210,h:435},
+  {l:'Quadríceps E',t:'rect',x:512,y:1145,w:210,h:435},
+  {l:'Adutores D',t:'rect',x:440,y:1150,w:80,h:350},
+  {l:'Adutores E',t:'rect',x:512,y:1150,w:80,h:350},
+  {l:'Joelho D',t:'ellipse',cx:417,cy:1582,rx:70,ry:55},
+  {l:'Joelho E',t:'ellipse',cx:615,cy:1582,rx:70,ry:55},
+  {l:'Tibial D',t:'rect',x:345,y:1600,w:145,h:300},
+  {l:'Tibial E',t:'rect',x:542,y:1600,w:145,h:300},
+  {l:'Tornozelo/Pé D',t:'rect',x:335,y:1900,w:170,h:176},
+  {l:'Tornozelo/Pé E',t:'rect',x:527,y:1900,w:170,h:176},
+  {l:'Cervical',t:'rect',x:1436,y:335,w:140,h:95},
+  {l:'Lombar',t:'rect',x:1307,y:700,w:401,h:220},
+  {l:'Trapézio E',t:'rect',x:1345,y:430,w:161,h:230},
+  {l:'Trapézio D',t:'rect',x:1506,y:430,w:161,h:230},
+  {l:'Ombro (post.) E',t:'ellipse',cx:1250,cy:460,rx:95,ry:85},
+  {l:'Ombro (post.) D',t:'ellipse',cx:1762,cy:460,rx:95,ry:85},
+  {l:'Tríceps E',t:'rect',x:1205,y:545,w:170,h:235},
+  {l:'Tríceps D',t:'rect',x:1637,y:545,w:170,h:235},
+  {l:'Glúteo E',t:'rect',x:1300,y:920,w:210,h:270},
+  {l:'Isquiotibial E',t:'rect',x:1300,y:1190,w:210,h:390},
+  {l:'Glúteo D',t:'rect',x:1502,y:920,w:210,h:270},
+  {l:'Isquiotibial D',t:'rect',x:1502,y:1190,w:210,h:390},
+  {l:'Fossa Poplítea E',t:'ellipse',cx:1407,cy:1582,rx:70,ry:55},
+  {l:'Fossa Poplítea D',t:'ellipse',cx:1605,cy:1582,rx:70,ry:55},
+  {l:'Panturrilha E',t:'rect',x:1335,y:1600,w:145,h:300},
+  {l:'Panturrilha D',t:'rect',x:1532,y:1600,w:145,h:300},
+  {l:'Calcâneo E',t:'rect',x:1325,y:1900,w:170,h:176},
+  {l:'Calcâneo D',t:'rect',x:1517,y:1900,w:170,h:176}
+];
+
+// Gera o mapa de dor em modo somente-leitura (sem clique), já preenchido com os dados de um registro
+function wmapRenderReadOnly(dores) {
+  const entries = Object.entries(dores || {});
+  if (!entries.length) return '';
+  const shapes = WMAP_REGIONS_DATA.map(r => {
+    const nivel = dores[r.l];
+    const fill = nivel !== undefined ? wmapDorColor(nivel) : 'transparent';
+    const fillOpacity = nivel !== undefined ? 0.55 : 0;
+    const stroke = nivel !== undefined ? wmapDorColor(nivel) : 'transparent';
+    if (r.t === 'ellipse') {
+      return `<ellipse cx="${r.cx}" cy="${r.cy}" rx="${r.rx}" ry="${r.ry}" fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="2"><title>${r.l}${nivel!==undefined?': '+nivel+'/10':''}</title></ellipse>`;
+    }
+    return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="8" fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="2"><title>${r.l}${nivel!==undefined?': '+nivel+'/10':''}</title></rect>`;
+  }).join('');
+  const pills = entries.map(([reg, nivel]) => {
+    const cor = wmapDorColor(nivel);
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${cor}22;border:1px solid ${cor};color:${cor};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;margin:2px;">${reg}: ${nivel}/10</span>`;
+  }).join('');
+  return `
+    <div style="position:relative;width:100%;max-width:340px;aspect-ratio:2048/2094;margin:0 auto;background:var(--cinza-fundo);border:1px solid var(--cinza-borda);border-radius:10px;overflow:hidden;">
+      <img src="${WMAP_IMG_URL}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;">
+      <svg viewBox="0 0 2048 2094" preserveAspectRatio="xMidYMid meet" style="position:absolute;top:0;left:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">${shapes}</svg>
+    </div>
+    <div style="text-align:center;margin-top:10px;">${pills}</div>`;
+}
 
 function wmapDorColor(nivel) {
   if (nivel === 0) return '#00c853';
@@ -3656,7 +3745,7 @@ async function openManualMonModal() {
   const athletes = await dbGetAll('athletes');
   const sel = document.getElementById('mm-atleta');
   sel.innerHTML = '<option value="">Selecione o atleta...</option>' +
-    athletes.filter(a => a.status === 'ativo')
+    athletes.filter(a => a.status === 'ativo' || a.status === 'afastado')
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 
