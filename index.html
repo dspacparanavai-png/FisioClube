@@ -1610,7 +1610,7 @@ body.dark-mode #topbar {
 <div id="view-wellness" style="display:none;">
   <div class="wellness-box">
     <div style="text-align:center;margin-bottom:16px;">
-      <div style="font-size:28px;">🧠</div>
+      <img id="w-logo-img" alt="" style="width:64px;height:64px;object-fit:contain;margin:0 auto 6px;display:block;">
       <h2>Wellness Pré-Treino</h2>
       <div class="sub">AC Paranavaí — Fisioterapia</div>
     </div>
@@ -1659,6 +1659,74 @@ body.dark-mode #topbar {
       <input type="range" min="1" max="10" value="5" id="w-rec" oninput="document.getElementById('wl-rec').textContent=this.value">
       <div class="slider-hints"><span>Muito mal</span><span>Muito bem</span></div>
     </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:12px;">🩺 Mapa de Dor — toque na região com dor</div>
+      <div style="position:relative;width:100%;aspect-ratio:2048/2094;background:var(--cinza-fundo);border:1px solid var(--cinza-borda);border-radius:10px;overflow:hidden;">
+        <img id="wmap-img" src="https://zopczkxnxjehfizubhew.supabase.co/storage/v1/object/public/Fotos/mapa_dor.png" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;">
+        <svg id="wmap-svg" viewBox="0 0 2048 2094" preserveAspectRatio="xMidYMid meet" style="position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
+          <!-- ===== ANTERIOR (coordenadas medidas da imagem real) ===== -->
+          <ellipse data-region="Cabeça" cx="513" cy="197" rx="101" ry="142" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Abdômen" x="317" y="880" width="401" height="260" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Peitoral D" x="330" y="470" width="186" height="210" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Peitoral E" x="516" y="470" width="186" height="210" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Ombro D" cx="200" cy="490" rx="110" ry="130" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Ombro E" cx="832" cy="490" rx="110" ry="130" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Bíceps D" x="165" y="680" width="175" height="330" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Bíceps E" x="692" y="680" width="175" height="330" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Antebraço D" x="115" y="1010" width="140" height="80" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Antebraço E" x="777" y="1010" width="140" height="80" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Punho/Mão D" cx="175" cy="1160" rx="90" ry="95" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Punho/Mão E" cx="857" cy="1160" rx="90" ry="95" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Quadríceps D" x="310" y="1145" width="210" height="435" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Quadríceps E" x="512" y="1145" width="210" height="435" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Adutores D" x="440" y="1150" width="80" height="350" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Adutores E" x="512" y="1150" width="80" height="350" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Joelho D" cx="417" cy="1582" rx="70" ry="55" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Joelho E" cx="615" cy="1582" rx="70" ry="55" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Tibial D" x="345" y="1600" width="145" height="300" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Tibial E" x="542" y="1600" width="145" height="300" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Tornozelo/Pé D" x="335" y="1900" width="170" height="176" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Tornozelo/Pé E" x="527" y="1900" width="170" height="176" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+
+          <!-- ===== POSTERIOR (mesma pose, deslocado +990px; sem espelhamento nas costas) ===== -->
+          <rect data-region="Cervical" x="1436" y="335" width="140" height="110" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Lombar" x="1307" y="700" width="401" height="220" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Trapézio E" x="1320" y="470" width="186" height="210" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Trapézio D" x="1506" y="470" width="186" height="210" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Ombro (post.) E" cx="1190" cy="490" rx="110" ry="130" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Ombro (post.) D" cx="1822" cy="490" rx="110" ry="130" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Tríceps E" x="1155" y="680" width="175" height="330" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Tríceps D" x="1682" y="680" width="175" height="330" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Glúteo E" x="1300" y="920" width="210" height="270" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Isquiotibial E" x="1300" y="1190" width="210" height="390" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Glúteo D" x="1502" y="920" width="210" height="270" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Isquiotibial D" x="1502" y="1190" width="210" height="390" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Fossa Poplítea E" cx="1407" cy="1582" rx="70" ry="55" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <ellipse data-region="Fossa Poplítea D" cx="1605" cy="1582" rx="70" ry="55" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Panturrilha E" x="1335" y="1600" width="145" height="300" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Panturrilha D" x="1532" y="1600" width="145" height="300" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Calcâneo E" x="1325" y="1900" width="170" height="176" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+          <rect data-region="Calcâneo D" x="1517" y="1900" width="170" height="176" rx="8" fill="transparent" class="wmap-region" onclick="wmapClick(this)"/>
+        </svg>
+      </div>
+
+      <div id="wmap-panel" style="display:none;margin-top:10px;padding:12px;background:var(--cinza-fundo);border:1px solid var(--cinza-borda);border-radius:8px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;" id="wmap-region-name"></div>
+        <input type="range" min="0" max="10" value="5" id="wmap-dor-slider" oninput="document.getElementById('wmap-dor-val').textContent=this.value" style="width:100%;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--cinza-texto);margin-bottom:8px;">
+          <span>Sem dor</span><span id="wmap-dor-val">5</span><span>Dor máxima</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="wmapConfirm()">Confirmar</button>
+          <button class="btn btn-ghost" onclick="wmapRemove()">Remover</button>
+          <button class="btn btn-ghost" onclick="wmapCancel()">Cancelar</button>
+        </div>
+      </div>
+      <div id="wmap-lista" style="margin-top:8px;"></div>
+      <input type="hidden" id="w-dores" value="[]">
+    </div>
+
       <div style="font-size:12px;color:var(--cinza-texto);margin-bottom:8px;">💧 Cor da Urina (Hidratação)</div>
       <div class="urina-row" id="w-urina-row">
         <div class="urina-btn" style="background:#FFF9C4;" data-n="1" onclick="wSelectUrina(1)" title="Bem hidratado"></div>
@@ -3481,6 +3549,86 @@ window.saveDuracao = saveDuracao;
 window.toggleWellnessTooltip = toggleWellnessTooltip;
 window.closeWellnessTooltip = closeWellnessTooltip;
 
+// ── MAPA CORPORAL DE DOR ─────────────────────────────────────
+let wmapDores = {};
+let wmapRegionAtiva = null;
+let wmapElementoAtivo = null;
+
+function wmapDorColor(nivel) {
+  if (nivel === 0) return '#00c853';
+  if (nivel <= 3) return '#ffeb3b';
+  if (nivel <= 6) return '#ff9800';
+  return '#e0282e';
+}
+
+window.wmapClick = function(el) {
+  const region = el.dataset.region;
+  wmapRegionAtiva = region;
+  wmapElementoAtivo = el;
+  document.getElementById('wmap-region-name').textContent = region;
+  const nivelAtual = wmapDores[region] ?? 5;
+  document.getElementById('wmap-dor-slider').value = nivelAtual;
+  document.getElementById('wmap-dor-val').textContent = nivelAtual;
+  document.getElementById('wmap-panel').style.display = 'block';
+};
+
+window.wmapConfirm = function() {
+  if (!wmapRegionAtiva) return;
+  const nivel = parseInt(document.getElementById('wmap-dor-slider').value);
+  wmapDores[wmapRegionAtiva] = nivel;
+  if (wmapElementoAtivo) {
+    wmapElementoAtivo.style.fill = wmapDorColor(nivel);
+    wmapElementoAtivo.style.fillOpacity = '0.55';
+    wmapElementoAtivo.style.stroke = wmapDorColor(nivel);
+    wmapElementoAtivo.style.strokeWidth = '2';
+  }
+  wmapUpdateHidden(); wmapUpdateLista();
+  document.getElementById('wmap-panel').style.display = 'none';
+  wmapRegionAtiva = null; wmapElementoAtivo = null;
+};
+
+window.wmapRemove = function() {
+  if (!wmapRegionAtiva) return;
+  delete wmapDores[wmapRegionAtiva];
+  if (wmapElementoAtivo) {
+    wmapElementoAtivo.style.fill = 'transparent';
+    wmapElementoAtivo.style.stroke = 'transparent';
+  }
+  wmapUpdateHidden(); wmapUpdateLista();
+  document.getElementById('wmap-panel').style.display = 'none';
+  wmapRegionAtiva = null; wmapElementoAtivo = null;
+};
+
+window.wmapCancel = function() {
+  document.getElementById('wmap-panel').style.display = 'none';
+  wmapRegionAtiva = null; wmapElementoAtivo = null;
+};
+
+function wmapUpdateHidden() {
+  document.getElementById('w-dores').value = JSON.stringify(wmapDores);
+}
+
+function wmapUpdateLista() {
+  const lista = document.getElementById('wmap-lista');
+  const entries = Object.entries(wmapDores);
+  if (!entries.length) { lista.innerHTML = ''; return; }
+  lista.innerHTML = `<div style="font-size:11px;color:var(--cinza-texto);margin-bottom:6px;">Regiões com dor:</div>` +
+    entries.map(([reg, nivel]) => `<span style="display:inline-flex;align-items:center;gap:4px;background:${wmapDorColor(nivel)}22;border:1px solid ${wmapDorColor(nivel)};color:${wmapDorColor(nivel)};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;margin:2px;">${reg}: ${nivel}/10</span>`).join('');
+}
+
+function wmapReset() {
+  wmapDores = {};
+  const el = document.getElementById('w-dores');
+  if (el) el.value = '[]';
+  const lista = document.getElementById('wmap-lista');
+  if (lista) lista.innerHTML = '';
+  const panel = document.getElementById('wmap-panel');
+  if (panel) panel.style.display = 'none';
+  document.querySelectorAll('.wmap-region').forEach(r => {
+    r.style.fill = 'transparent'; r.style.stroke = 'transparent';
+  });
+}
+
 // ── Registro Manual (fisioterapeuta) ──────────────────────────
 let mmUrina = 0;
 
@@ -3599,6 +3747,7 @@ async function checkHash() {
     document.getElementById('view-wellness').style.display = 'flex';
     await loadAtletasSelect('w-atleta');
     wUpdate();
+    wmapReset();
     return true;
   } else if (hash === '#pse') {
     document.getElementById('login-screen').classList.remove('active');
