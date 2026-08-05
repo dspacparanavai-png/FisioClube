@@ -102,6 +102,24 @@
   /* Oculta botões de excluir para fisios */
   body.role-fisio .btn-danger { display: none !important; }
 
+  /* Diretoria: acesso total de visualização, mas nenhuma ação de escrita */
+  body.role-diretoria .btn-danger,
+  body.role-diretoria .btn-primary,
+  body.role-diretoria .send-btn,
+  body.role-diretoria [data-readonly-hide] { display: none !important; }
+  body.role-diretoria input,
+  body.role-diretoria select,
+  body.role-diretoria textarea { pointer-events: none !important; opacity: 0.75; }
+  body.role-diretoria .cat-selector,
+  body.role-diretoria #search-bar,
+  body.role-diretoria #hist-filtro-atleta,
+  body.role-diretoria #hist-filtro-status,
+  body.role-diretoria #mon-data,
+  body.role-diretoria #evol-atleta,
+  body.role-diretoria #evol-tipo,
+  body.role-diretoria .theme-toggle,
+  body.role-diretoria .nav-item { pointer-events: auto !important; opacity: 1; }
+
 body.dark-mode {
   --preto: #0a0a0a;
   --cinza-fundo: #111318;
@@ -2048,6 +2066,7 @@ async function dbGetByIndex(table, col, value) {
 }
 
 async function dbAdd(table, obj) {
+  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return null; }
   const { data, error } = await supa.from(table).insert(obj).select().single();
   if (error) { console.error(error); return null; }
   sbStatus('ok', 'Supabase conectado');
@@ -2055,6 +2074,7 @@ async function dbAdd(table, obj) {
 }
 
 async function dbPut(table, obj) {
+  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return; }
   const { id, ...rest } = obj;
   const { error } = await supa.from(table).update(rest).eq('id', id);
   if (error) { console.error(error); return; }
@@ -2062,6 +2082,7 @@ async function dbPut(table, obj) {
 }
 
 async function dbDelete(table, id) {
+  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return; }
   const { error } = await supa.from(table).delete().eq('id', id);
   if (error) { console.error(error); return; }
   sbStatus('ok', 'Supabase conectado');
@@ -2135,13 +2156,36 @@ async function onLogin(user) {
   currentUser = user;
   const { data: profile } = await supa.from('profiles').select('role').eq('id', user.id).single();
   currentRole = profile?.role || 'fisio';
-  document.body.classList.remove('role-admin','role-fisio');
+  document.body.classList.remove('role-admin','role-fisio','role-diretoria');
   document.body.classList.add(`role-${currentRole}`);
+  const roleLabels = { admin: 'Admin', fisio: 'Fisio', diretoria: 'Diretoria (somente leitura)' };
   document.getElementById('user-info').textContent =
-    `${currentRole === 'admin' ? 'Admin' : 'Fisio'} — ${user.email}`;
+    `${roleLabels[currentRole] || currentRole} — ${user.email}`;
   document.getElementById('login-screen').classList.remove('active');
   document.getElementById('sb-bar').style.display = 'flex';
+  if (currentRole === 'diretoria') setupReadOnlyGuard();
   await init();
+}
+
+// Trava adicional: esconde qualquer botão de ação de escrita que não use .btn-primary/.btn-danger
+// (ex: botões "✏️ Editar" que reaproveitam a classe .btn-ghost) para a role somente-leitura.
+function setupReadOnlyGuard() {
+  const scan = () => {
+    document.querySelectorAll('[onclick]').forEach(el => {
+      if (el.hasAttribute('data-readonly-checked')) return;
+      const oc = (el.getAttribute('onclick') || '').trim();
+      const fnName = (oc.match(/^([A-Za-z0-9_]+)\s*\(/) || [,''])[1];
+      const isView = /^(openAthleteDetail|voltarParaLista|showSection|toggleTheme|handleSearch|toggleWellnessTooltip|closeWellnessTooltip|exportAthletePDF)$/.test(fnName);
+      const isMutating = !isView && /(Modal|Edit|save|delete|update|Duracao|wmapConfirm|wmapRemove|wmapCancel|toggleAthleteStatus)/i.test(fnName);
+      if (isMutating) {
+        el.setAttribute('data-readonly-hide', '1');
+      }
+      el.setAttribute('data-readonly-checked', '1');
+    });
+  };
+  scan();
+  const observer = new MutationObserver(() => scan());
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 async function doLogout() {
@@ -2528,7 +2572,11 @@ async function openAthleteDetail(id) {
   currentAthleteId = id;
   const a = await dbGet('athletes', id);
   const sessions = await dbGetByIndex('sessions', 'athleteId', id);
-  sessions.sort((x, y) => y.data.localeCompare(x.data));
+  sessions.sort((x, y) => {
+    const dx = x.data + 'T' + (x.createdAt ? x.createdAt.slice(11,19) : '00:00:00');
+    const dy = y.data + 'T' + (y.createdAt ? y.createdAt.slice(11,19) : '00:00:00');
+    return dy.localeCompare(dx);
+  });
 
   const monHist = (await dbGetByIndex('monitoring', 'athleteId', id)).sort((x,y) => y.data.localeCompare(x.data));
   let ultimoComDor = null;
@@ -2604,7 +2652,7 @@ async function openAthleteDetail(id) {
            </div>`
         : sessions.map(s => `
             <div class="session-entry" id="session-${s.id}">
-              <div class="session-date">📅 ${formatDate(s.data)} — ${s.data}</div>
+              <div class="session-date">📅 ${formatDate(s.data)} — ${s.data}${s.createdAt ? ` <span style="color:var(--cinza-texto);font-weight:400;">· ${new Date(s.createdAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>` : ''}</div>
               ${s.physioNome ? `<div style="margin-bottom:8px;"><span class="badge" style="background:#ff3d3d;color:#fff;">👨‍⚕️ ${escapeHtml(s.physioNome)}</span></div>` : ''}
               ${s.evolucao ? `
                 <div class="session-field">
@@ -2664,7 +2712,11 @@ async function renderHoje() {
 async function renderHistorico() {
   const athletes = await getAthletesByCat();
   let sessions = await getSessionsByCat();
-  sessions.sort((a, b) => b.data.localeCompare(a.data));
+  sessions.sort((a, b) => {
+    const da = a.data + 'T' + (a.createdAt ? a.createdAt.slice(11,19) : '00:00:00');
+    const db = b.data + 'T' + (b.createdAt ? b.createdAt.slice(11,19) : '00:00:00');
+    return db.localeCompare(da);
+  });
 
   // Populate athlete filter
   const selEl = document.getElementById('hist-filtro-atleta');
@@ -2713,6 +2765,7 @@ async function renderHistorico() {
             <div class="td-avatar">${athlete.foto ? `<img src="${athlete.foto}">` : '⚽'}</div>
             <strong>${athlete.apelido || athlete.nome}</strong>
             <span class="badge badge-${athlete.status}">${statusLabel(athlete.status)}</span>
+            ${session.createdAt ? `<span style="font-size:11px;color:var(--cinza-texto);margin-left:auto;">🕐 ${new Date(session.createdAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>` : ''}
           </div>
           ${session.procedimentos ? `<div class="session-field"><div class="session-field-label">Procedimentos</div><div class="session-field-value">${escapeHtml(session.procedimentos)}</div></div>` : ''}
           ${session.evolucao ? `<div class="session-field"><div class="session-field-label">Evolução</div><div class="session-field-value">${escapeHtml(session.evolucao)}</div></div>` : ''}
