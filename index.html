@@ -99,6 +99,19 @@
     margin-top: 10px;
     min-height: 18px;
   }
+  /* Painel público de monitoramento (QR code / TV) */
+  body.public-monitor #main { margin-left: 0 !important; }
+  body.public-monitor .mon-dur-input { pointer-events: none; opacity: 0.6; }
+  body.public-monitor #topbar-title::after {
+    content: '● AO VIVO';
+    margin-left: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #00c853;
+    vertical-align: middle;
+  }
+
   /* Oculta botões de excluir para fisios */
   body.role-fisio .btn-danger { display: none !important; }
 
@@ -1199,14 +1212,15 @@ body.dark-mode #topbar {
 
     <!-- MONITORAMENTO -->
     <div class="view" id="view-monitoramento">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div id="mon-actions-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
         <div style="display:flex;align-items:center;gap:12px;">
           <label style="font-size:13px;color:var(--cinza-texto);">Data:</label>
           <input type="date" id="mon-data" class="form-control" style="width:180px;" onchange="renderMonitoramento()">
         </div>
-        <div style="display:flex;gap:10px;">
+        <div id="mon-actions-buttons" style="display:flex;gap:10px;">
           <button class="btn btn-ghost" onclick="copyWellnessLink()">📋 Link Wellness</button>
           <button class="btn btn-ghost" onclick="copyPseLink()">📋 Link PSE</button>
+          <button class="btn btn-ghost" onclick="copyMonitorLink()">📺 Link Monitor (TV/QR)</button>
           <button class="btn btn-primary" onclick="openManualMonModal()">+ Registrar Manualmente</button>
         </div>
       </div>
@@ -3879,6 +3893,10 @@ function copyPseLink() {
   const url = window.location.href.split('#')[0] + '#pse';
   navigator.clipboard.writeText(url).then(() => showToast('Link PSE copiado!'));
 }
+function copyMonitorLink() {
+  const url = window.location.href.split('#')[0] + '#monitor';
+  navigator.clipboard.writeText(url).then(() => showToast('Link do Monitoramento (somente leitura) copiado!'));
+}
 
 // ── Roteamento por hash (para links do atleta) ────────────────
 async function checkHash() {
@@ -3899,6 +3917,17 @@ async function checkHash() {
       document.getElementById('pl-pse').textContent = document.getElementById('p-pse').value;
       document.getElementById('p-pse-label').textContent = PSE_NOMES[parseInt(document.getElementById('p-pse').value)] || '';
     });
+    return true;
+  } else if (hash === '#monitor') {
+    // Painel público, somente leitura, para QR code (ex: TV do vestiário)
+    document.getElementById('login-screen').classList.remove('active');
+    document.getElementById('sidebar').style.display = 'none';
+    document.body.classList.add('public-monitor');
+    document.getElementById('mon-actions-buttons').style.display = 'none';
+    showSection('monitoramento');
+    setInterval(() => {
+      if (window.location.hash === '#monitor') renderMonitoramento();
+    }, 30000);
     return true;
   }
   return false;
