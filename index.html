@@ -102,6 +102,7 @@
   /* Painel público de monitoramento (QR code / TV) */
   body.public-monitor #main { margin-left: 0 !important; }
   body.public-monitor .mon-dur-input { pointer-events: none; opacity: 0.6; }
+  body.public-monitor .cat-selector { display: none !important; }
   body.public-monitor #topbar-title::after {
     content: '● AO VIVO';
     margin-left: 12px;
@@ -3591,6 +3592,7 @@ async function renderMonitoramento() {
       }).join('')}
     </div>
 
+    ${document.body.classList.contains('public-monitor') ? '' : `
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">Controle de Carga</div>
     <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:12px;overflow:hidden;">
       <div style="display:grid;grid-template-columns:2fr 1fr 1.2fr 1fr 1.5fr;gap:8px;padding:10px 16px;border-bottom:1px solid var(--cinza-borda);font-size:11px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">
@@ -3622,7 +3624,7 @@ async function renderMonitoramento() {
         <span><span class="mon-badge mon-amarelo">1.3 – 1.5</span> Atenção</span>
         <span><span class="mon-badge mon-vermelho">&gt; 1.5</span> Risco aumentado de lesão</span>
       </div>
-    </div>` : ''}`;
+    </div>` : ''}`}`;
 }
 
 async function deleteMonitoring(id) {
@@ -3924,6 +3926,7 @@ async function checkHash() {
     document.getElementById('sidebar').style.display = 'none';
     document.body.classList.add('public-monitor');
     document.getElementById('mon-actions-buttons').style.display = 'none';
+    currentCategoria = 'Profissional';
     showSection('monitoramento');
     setInterval(() => {
       if (window.location.hash === '#monitor') renderMonitoramento();
