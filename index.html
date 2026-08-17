@@ -2510,8 +2510,11 @@ async function renderAtletas() {
     // Ordem fixa das posições
     const POSICAO_ORDER = ['Goleiro','Zagueiro','Lateral','Meio-Campo','Atacante'];
 
+    const liberados = filtered.filter(a => a.status === 'liberado');
+    const emGrupo = filtered.filter(a => a.status !== 'liberado');
+
     const groups = {};
-    sortAlfa(filtered).forEach(a => {
+    sortAlfa(emGrupo).forEach(a => {
       const pos = a.posicao || 'Sem Posição';
       if (!groups[pos]) groups[pos] = [];
       groups[pos].push(a);
@@ -2537,7 +2540,15 @@ async function renderAtletas() {
             ${groups[pos].map(a => renderAthleteCard(a)).join('')}
           </div>
         </div>
-      `).join('');
+      `).join('') + (liberados.length ? `
+        <div style="margin-bottom:28px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza-texto);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--cinza-borda);">
+            🔓 Liberados <span style="font-weight:400;">(${liberados.length})</span>
+          </div>
+          <div class="athletes-grid">
+            ${sortAlfa(liberados).map(a => renderAthleteCard(a)).join('')}
+          </div>
+        </div>` : '');
     } else {
       container.innerHTML = sortedGroups.map(pos => `
         <div style="margin-bottom:28px;">
@@ -2551,7 +2562,18 @@ async function renderAtletas() {
             </table>
           </div>
         </div>
-      `).join('');
+      `).join('') + (liberados.length ? `
+        <div style="margin-bottom:28px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza-texto);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--cinza-borda);">
+            🔓 Liberados <span style="font-weight:400;">(${liberados.length})</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Atleta</th><th>Nº</th><th>Posição</th><th>Diagnóstico</th><th>Status</th></tr></thead>
+              <tbody>${sortAlfa(liberados).map(a => renderAthleteRow(a)).join('')}</tbody>
+            </table>
+          </div>
+        </div>` : '');
     }
   } else {
     // Ordem alfabética simples
