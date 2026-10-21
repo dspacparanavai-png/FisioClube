@@ -2345,6 +2345,7 @@ async function renderDashboardAlertas(athletes) {
   if (!alertasEl) return;
 
   const allMon = await getMonitoringByCat();
+  const ctxCarga = montarContextoCarga(allMon);
   const today = hojeLocal();
   const atletaMap = {};
   athletes.forEach(a => atletaMap[a.id] = a);
@@ -2405,8 +2406,8 @@ async function renderDashboardAlertas(athletes) {
       });
     }
 
-    // ACWR
-    const stats = calcStats(hist);
+    // ACWR (dias corridos até hoje; hoje só entra se já houver carga)
+    const stats = calcStats(hist, ctxCarga, today, a.status === 'afastado');
     if (stats.acwr !== null && stats.acwr > 1.5) {
       alertas.push({
         tipo: 'acwr',
@@ -3480,25 +3481,133 @@ async function carregarMonitorPublico() {
 }
 
 // ── Monitoramento (visão do fisio) ────────────────────────────
-function calcStats(registros) {
-  // Ordenados por data desc
-  const sorted = [...registros].sort((a,b) => b.data.localeCompare(a.data));
-  const cargas7 = sorted.slice(0,7).map(r => r.pse_carga || 0);
-  const cargas28 = sorted.slice(0,28).map(r => r.pse_carga || 0);
+// ── Carga: ACWR, monotonia e strain ──────────────────────────
+// Metodologia definida em 21/10/2026 (ver claude/03-changelog.md):
+// - Janelas em dias corridos: aguda 7 d, crônica 28 d, média móvel
+//   simples acoplada (Hulin 2014; Gabbett 2016). Limites 1,3 e 1,5.
+// - Folga (o time não treinou) = 0 UA (Foster 1998).
+// - Dia de treino do time sem carga do atleta = média do time no dia
+//   (Griffin 2021). Dia de treino = pelo menos MIN_ATLETAS_TREINO
+//   atletas da categoria com carga lançada. Atleta afastado não recebe
+//   essa estimativa (o dia conta como 0).
+// - PSE enviada sem duração = PSE × mediana das durações do time no dia.
+// - O dia de hoje só entra quando o atleta já tem carga ou PSE de hoje.
+// - ACWR só com 28 dias de histórico. Monotonia = média ÷ DP (DP com n)
+//   dos 7 dias; DP 0 → sem valor (null). Strain = soma 7 d × monotonia.
+// - EWMA (Williams 2017; λ = 2/(N+1)) só como segunda curva da Evolução.
+const MIN_ATLETAS_TREINO = 3;
+const LAMBDA_AGUDA = 2 / (7 + 1);
+const LAMBDA_CRONICA = 2 / (28 + 1);
 
-  const sum7 = cargas7.reduce((s,v) => s+v, 0);
-  const sum28 = cargas28.reduce((s,v) => s+v, 0);
-  const media7 = cargas7.length ? sum7 / cargas7.length : 0;
-  const media28 = cargas28.length ? sum28 / cargas28.length : 0;
+// 'AAAA-MM-DD' <-> número do dia (contagem em UTC, sem horário de verão)
+function dataParaDia(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86400000);
+}
+function diaParaData(n) {
+  const d = new Date(n * 86400000);
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${mm}-${dd}`;
+}
 
-  // Monotonia
-  const mean = cargas7.length ? cargas7.reduce((s,v)=>s+v,0)/cargas7.length : 0;
-  const dp = cargas7.length > 1 ? Math.sqrt(cargas7.reduce((s,v)=>s+(v-mean)**2,0)/cargas7.length) : 0;
-  const monotonia = dp > 0 ? mean / dp : 0;
-  const strain = sum7 * monotonia;
-  const acwr = media28 > 0 ? media7 / media28 : null;
+function mediana(arr) {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
 
-  return { cargaSemana: sum7, monotonia, strain, acwr };
+function temCargaReal(r) {
+  return !!r && r.pse_carga !== null && r.pse_carga !== undefined && Number(r.pse_carga) > 0;
+}
+
+// Resumo por dia da categoria: cargas lançadas, durações, se houve treino
+function montarContextoCarga(allMon) {
+  const porDia = {};
+  (allMon || []).forEach(r => {
+    if (!r.data) return;
+    const d = porDia[r.data] || (porDia[r.data] = { cargas: [], duracoes: [] });
+    if (temCargaReal(r)) d.cargas.push(Number(r.pse_carga));
+    if (r.pse_duracao !== null && r.pse_duracao !== undefined && Number(r.pse_duracao) > 0) {
+      d.duracoes.push(Number(r.pse_duracao));
+    }
+  });
+  Object.values(porDia).forEach(d => {
+    d.treino = d.cargas.length >= MIN_ATLETAS_TREINO;
+    d.mediaTime = d.cargas.length ? d.cargas.reduce((s, v) => s + v, 0) / d.cargas.length : null;
+    d.medianaDuracao = mediana(d.duracoes);
+  });
+  return porDia;
+}
+
+// Carga de um dia do atleta → { carga, tipo: 'real' | 'estimada' | 'folga' | 'sem_dado' }
+function cargaDoDia(r, data, ctx, afastado) {
+  if (temCargaReal(r)) return { carga: Number(r.pse_carga), tipo: 'real' };
+  const t = ctx[data];
+  const pse = r ? (Number(r.pse_intensidade) || 0) : 0;
+  if (pse > 0 && t && t.medianaDuracao) return { carga: pse * t.medianaDuracao, tipo: 'estimada' };
+  if (pse > 0) return { carga: 0, tipo: 'sem_dado' };   // treinou, mas não há duração para estimar
+  if (!afastado && t && t.treino) return { carga: t.mediaTime, tipo: 'estimada' };
+  return { carga: 0, tipo: 'folga' };
+}
+
+// registros: monitoramento de UM atleta; ctx: montarContextoCarga() da categoria;
+// refData: último dia considerado ('AAAA-MM-DD'); afastado: status atual do atleta
+function calcStats(registros, ctx, refData, afastado = false) {
+  ctx = ctx || montarContextoCarga(registros);
+  refData = refData || hojeLocal();
+  const vazio = { acwr: null, ewma: null, cargaSemana: null, monotonia: null, strain: null,
+                  estimados7: 0, diasHistorico: 0, fim: null };
+
+  const porData = {};
+  (registros || []).forEach(r => { if (r.data && r.data <= refData) porData[r.data] = r; });
+  const datas = Object.keys(porData).sort();
+  if (!datas.length) return vazio;
+
+  const ini = dataParaDia(datas[0]);
+  let fim = dataParaDia(refData);
+  if (refData === hojeLocal()) {
+    const rh = porData[refData];
+    if (!(temCargaReal(rh) || Number(rh?.pse_intensidade) > 0)) fim -= 1;
+  }
+  if (fim < ini) return vazio;
+
+  const serie = [];
+  for (let d = ini; d <= fim; d++) {
+    const ds = diaParaData(d);
+    serie.push(cargaDoDia(porData[ds], ds, ctx, afastado));
+  }
+  const n = serie.length;
+  const ult7 = serie.slice(-7);
+  const ult28 = serie.slice(-28);
+  const sum7 = ult7.reduce((s, x) => s + x.carga, 0);
+  const sum28 = ult28.reduce((s, x) => s + x.carga, 0);
+
+  const acwr = (n >= 28 && sum28 > 0) ? (sum7 / 7) / (sum28 / 28) : null;
+
+  let monotonia = null, strain = null;
+  if (n >= 7) {
+    const media = sum7 / 7;
+    const dp = Math.sqrt(ult7.reduce((s, x) => s + (x.carga - media) ** 2, 0) / 7);
+    if (dp > 0) { monotonia = media / dp; strain = sum7 * monotonia; }
+  }
+
+  let ea = serie[0].carga, ec = serie[0].carga;
+  for (let i = 1; i < n; i++) {
+    ea = serie[i].carga * LAMBDA_AGUDA + (1 - LAMBDA_AGUDA) * ea;
+    ec = serie[i].carga * LAMBDA_CRONICA + (1 - LAMBDA_CRONICA) * ec;
+  }
+  const ewma = (n >= 28 && ec > 0) ? ea / ec : null;
+
+  return {
+    acwr, ewma,
+    cargaSemana: n >= 7 ? sum7 : null,
+    monotonia, strain,
+    estimados7: ult7.filter(x => x.tipo === 'estimada').length,
+    diasHistorico: n,
+    fim: diaParaData(fim)
+  };
 }
 
 function acwrBadge(acwr) {
@@ -3591,6 +3700,7 @@ async function renderMonitoramento() {
   }
   // No painel público o servidor já devolve só os registros de hoje
   const monDia = publico ? allMon : allMon.filter(m => m.data === data);
+  const ctxCarga = montarContextoCarga(allMon);
   const atletaMap = {};
   athletes.forEach(a => atletaMap[a.id] = a);
 
@@ -3654,7 +3764,7 @@ async function renderMonitoramento() {
       ${ativos.map(a => {
         const m = monDia.find(r => r.athleteId == a.id);
         const hist = allMon.filter(r => r.athleteId == a.id);
-        const stats = calcStats(hist);
+        const stats = calcStats(hist, ctxCarga, data, a.status === 'afastado');
         return `
           <div style="display:grid;grid-template-columns:2fr 1fr 1.2fr 1fr 1.5fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--cinza-borda);align-items:center;font-size:13px;">
             <div style="font-weight:600;">${a.apelido || a.nome}</div>
@@ -5040,15 +5150,22 @@ function makeChart(title, labels, datasets, yLabel, legendItems) {
 
 async function renderEvolucaoMonitoramento(athleteId, container) {
   const allMon = await getMonitoringByCat();
-  const hist = allMon.filter(m => m.athleteId == athleteId)
-    .sort((a,b) => a.data.localeCompare(b.data)).slice(-30);
+  const ctxCarga = montarContextoCarga(allMon);
+  const atleta = await dbGet('athletes', athleteId);
+  const afastado = atleta?.status === 'afastado';
+  const histTodo = allMon.filter(m => m.athleteId == athleteId)
+    .sort((a,b) => a.data.localeCompare(b.data));
+  const hist = histTodo.slice(-30);
 
   if (!hist.length) {
     container.innerHTML = `<div class="empty-state"><div class="icon">📊</div><h3>Sem registros de monitoramento</h3></div>`;
     return;
   }
   const labels = hist.map(m => m.data);
-  const acwrData = hist.map((_,i) => { const s = calcStats(hist.slice(0,i+1)); return s.acwr!==null?parseFloat(s.acwr.toFixed(2)):null; });
+  // ACWR de cada data calculado com todo o histórico até aquela data (dias corridos)
+  const statsPorData = hist.map(m => calcStats(histTodo, ctxCarga, m.data, afastado));
+  const acwrData = statsPorData.map(s => s.acwr !== null ? parseFloat(s.acwr.toFixed(2)) : null);
+  const ewmaData = statsPorData.map(s => s.ewma !== null ? parseFloat(s.ewma.toFixed(2)) : null);
 
   container.innerHTML =
     makeChart('Hooper Index & Recuperação', labels,
@@ -5058,8 +5175,9 @@ async function renderEvolucaoMonitoramento(athleteId, container) {
       [{data:hist.map(m=>m.pse_carga||null),color:'#60A5FA'}],
       'UA',[{label:'Carga (UA)',color:'#60A5FA'}]) +
     makeChart('ACWR', labels,
-      [{data:acwrData,color:'#ffab00'}],
-      '',[{label:'ACWR',color:'#ffab00'}]);
+      [{data:acwrData,color:'#ffab00'},{data:ewmaData,color:'#a78bfa'}],
+      '',[{label:'ACWR — média móvel 7:28 (alertas)',color:'#ffab00'},{label:'ACWR — EWMA (comparação)',color:'#a78bfa'}]) +
+    `<div style="font-size:11px;color:var(--cinza-texto);margin:-8px 0 16px;">ACWR em dias corridos: folga = 0; dia de treino sem carga do atleta = média do time no dia. Exibido a partir de 28 dias de histórico.</div>`;
 }
 
 async function renderEvolucaoAvaliacao(athleteId, container) {
