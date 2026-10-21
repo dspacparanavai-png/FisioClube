@@ -333,6 +333,7 @@ body.dark-mode #topbar {
   .badge-ativo { background: rgba(0,200,83,0.15); color: var(--verde); border: 1px solid rgba(0,200,83,0.3); }
   .badge-afastado { background: rgba(255,179,0,0.15); color: var(--amarelo); border: 1px solid rgba(255,179,0,0.3); }
   .badge-liberado { background: rgba(138,144,158,0.15); color: var(--cinza-texto); border: 1px solid var(--cinza-borda); }
+  .badge-arquivado { background: rgba(138,144,158,0.08); color: var(--cinza-texto); border: 1px dashed var(--cinza-borda); }
 
   /* -- DASHBOARD CARDS -- */
   .stats-grid {
@@ -1482,6 +1483,7 @@ body.dark-mode #topbar {
           <option value="ativo">Ativo</option>
           <option value="afastado">Afastado</option>
           <option value="liberado">Liberado</option>
+          <option value="arquivado">Arquivado</option>
         </select>
       </div>
       <div class="form-group">
@@ -2163,20 +2165,23 @@ function setCategoria(cat) {
   if (currentSection === 'monitoramento') renderMonitoramento();
 }
 
-async function getAthletesByCat() {
+// Arquivados (atletas que saíram) ficam fora das listas de trabalho.
+// Telas de histórico passam incluirArquivados = true.
+async function getAthletesByCat(incluirArquivados = false) {
   const all = await dbGetAll('athletes');
-  return all.filter(a => (a.categoria || 'Profissional') === currentCategoria);
+  return all.filter(a => (a.categoria || 'Profissional') === currentCategoria
+    && (incluirArquivados || a.status !== 'arquivado'));
 }
 
 async function getSessionsByCat() {
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   const ids = new Set(athletes.map(a => a.id));
   const all = await dbGetAll('sessions');
   return all.filter(s => ids.has(s.athleteId));
 }
 
 async function getMonitoringByCat() {
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   const ids = new Set(athletes.map(a => a.id));
   const all = await dbGetAll('monitoring');
   return all.filter(m => ids.has(m.athleteId));
@@ -2225,7 +2230,7 @@ function setupReadOnlyGuard() {
       const oc = (el.getAttribute('onclick') || '').trim();
       const fnName = (oc.match(/^([A-Za-z0-9_]+)\s*\(/) || [,''])[1];
       const isView = /^(openAthleteDetail|voltarParaLista|showSection|toggleTheme|handleSearch|toggleWellnessTooltip|closeWellnessTooltip|exportAthletePDF)$/.test(fnName);
-      const isMutating = !isView && /(Modal|Edit|save|delete|update|Duracao|wmapConfirm|wmapRemove|wmapCancel|toggleAthleteStatus)/i.test(fnName);
+      const isMutating = !isView && /(Modal|Edit|save|delete|update|Duracao|wmapConfirm|wmapRemove|wmapCancel|toggleAthleteStatus|arquivar)/i.test(fnName);
       if (isMutating) {
         el.setAttribute('data-readonly-hide', '1');
       }
@@ -2518,20 +2523,24 @@ function renderAthleteRow(a) {
 }
 
 async function renderAtletas() {
-  const athletes = await getAthletesByCat();
-  const filtered = searchTerm
+  const athletes = await getAthletesByCat(true);
+  let filtered = searchTerm
     ? athletes.filter(a =>
         a.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (a.apelido || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     : athletes;
 
+  const arquivados = sortAlfa(filtered.filter(a => a.status === 'arquivado'));
+  filtered = filtered.filter(a => a.status !== 'arquivado');
+
   document.getElementById('atletas-count').textContent =
-    `${filtered.length} atleta${filtered.length !== 1 ? 's' : ''}`;
+    `${filtered.length} atleta${filtered.length !== 1 ? 's' : ''}` +
+    (arquivados.length ? ` · ${arquivados.length} arquivado${arquivados.length !== 1 ? 's' : ''}` : '');
 
   const container = document.getElementById('atletas-container');
 
-  if (filtered.length === 0) {
+  if (filtered.length === 0 && arquivados.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="icon">👥</div>
@@ -2626,6 +2635,21 @@ async function renderAtletas() {
         </div>`;
     }
   }
+
+  if (arquivados.length) {
+    container.innerHTML += `
+      <details style="margin-top:8px;opacity:0.75;">
+        <summary style="cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza-texto);padding-bottom:6px;border-bottom:1px solid var(--cinza-borda);margin-bottom:12px;">
+          🗄️ Arquivados <span style="font-weight:400;">(${arquivados.length})</span>
+        </summary>
+        ${atletasViewMode === 'grid'
+          ? `<div class="athletes-grid">${arquivados.map(a => renderAthleteCard(a)).join('')}</div>`
+          : `<div class="table-wrap"><table>
+               <thead><tr><th>Atleta</th><th>Nº</th><th>Posição</th><th>Diagnóstico</th><th>Status</th></tr></thead>
+               <tbody>${arquivados.map(a => renderAthleteRow(a)).join('')}</tbody>
+             </table></div>`}
+      </details>`;
+  }
 }
 
 function setAtletasView(mode) {
@@ -2698,7 +2722,10 @@ async function openAthleteDetail(id) {
           <button class="btn btn-primary" onclick="openSessionModal(${a.id})">+ Registrar Atendimento</button>
           <button class="btn btn-ghost btn-sm" onclick="openAthleteModal(${a.id})">✏️ Editar</button>
           <button class="btn btn-ghost btn-sm" onclick="exportAthletePDF(${a.id})">📄 Exportar PDF</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteAthlete(${a.id})">🗑️ Excluir</button>
+          ${a.status === 'arquivado'
+            ? `<button class="btn btn-ghost btn-sm" onclick="desarquivarAthlete(${a.id})">↩️ Desarquivar</button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="arquivarAthlete(${a.id})">🗄️ Arquivar</button>`}
+          ${currentRole === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteAthlete(${a.id})">🗑️ Excluir de vez</button>` : ''}
         </div>
       </div>
     </div>
@@ -2783,7 +2810,7 @@ async function renderHoje() {
 
 // -- HISTÓRICO ---------------------------------------------------------
 async function renderHistorico() {
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   let sessions = await getSessionsByCat();
   sessions.sort((a, b) => {
     const da = a.data + 'T' + (a.createdAt ? a.createdAt.slice(11,19) : '00:00:00');
@@ -2955,14 +2982,61 @@ async function saveAthlete() {
   if (currentSection === 'atletas') renderAtletas();
 }
 
+// Arquivar: o atleta sai das listas de trabalho e dos formulários,
+// mas todo o histórico continua no banco e aparece em "Arquivados".
+async function arquivarAthlete(id) {
+  const a = await dbGet('athletes', id);
+  if (!a) return;
+  if (!confirm(`Arquivar ${a.apelido || a.nome}?\n\nEle sai das listas e dos formulários, mas o histórico fica guardado. Dá para desarquivar depois.`)) return;
+  a.status = 'arquivado';
+  a.updatedAt = new Date().toISOString();
+  if (!(await dbPut('athletes', a))) return;
+  showToast('Atleta arquivado.');
+  openAthleteDetail(id);
+}
+
+async function desarquivarAthlete(id) {
+  const a = await dbGet('athletes', id);
+  if (!a) return;
+  if (!confirm(`Desarquivar ${a.apelido || a.nome}? Ele volta como "Ativo".`)) return;
+  a.status = 'ativo';
+  a.updatedAt = new Date().toISOString();
+  if (!(await dbPut('athletes', a))) return;
+  showToast('Atleta desarquivado.');
+  openAthleteDetail(id);
+}
+
+// Excluir de vez (só admin): apaga o histórico inteiro e depois o cadastro.
 async function deleteAthlete(id) {
-  if (!confirm('Tem certeza que deseja excluir este atleta? Todos os atendimentos serão perdidos.')) return;
+  if (currentRole !== 'admin') { showToast('Só o admin pode excluir de vez. Use "Arquivar".'); return; }
+  const a = await dbGet('athletes', id);
+  if (!a) return;
+  const nome = a.apelido || a.nome;
+  if (!confirm(`EXCLUIR DE VEZ ${nome}?\n\nApaga o cadastro e TODO o histórico: atendimentos, monitoramento (Wellness/PSE), avaliações funcionais e nutricionais. Não dá para desfazer.\n\nSe o atleta só saiu do clube, use "Arquivar".`)) return;
+  if (prompt('Para confirmar, digite EXCLUIR') !== 'EXCLUIR') { showToast('Exclusão cancelada.'); return; }
+
+  for (const tabela of ['monitoring', 'functional_assessments', 'nutritional_assessments', 'sessions']) {
+    const { error } = await supa.from(tabela).delete().eq('athleteId', id);
+    if (error) {
+      falhaGravacao({ message: `exclusão parou em ${tabela} (${error.message}). O cadastro não foi apagado.` });
+      return;
+    }
+  }
   if (!(await dbDelete('athletes', id))) return;
-  const sessions = await dbGetByIndex('sessions', 'athleteId', id);
-  for (const s of sessions) await dbDelete('sessions', s.id);
-  showToast('Atleta excluído.');
+
+  // Foto no Storage (falha aqui não impede a exclusão)
+  const caminho = (a.foto || '').split('/Fotos/')[1];
+  if (caminho) {
+    const { error } = await supa.storage.from('Fotos').remove([decodeURIComponent(caminho.split('?')[0])]);
+    if (error) console.error(error);
+  }
+
+  showToast('Atleta e todo o histórico excluídos.');
   showSection('atletas');
 }
+window.arquivarAthlete = arquivarAthlete;
+window.desarquivarAthlete = desarquivarAthlete;
+window.deleteAthlete = deleteAthlete;
 
 function openSessionModal(athleteId) {
   currentAthleteId = athleteId;
@@ -3134,7 +3208,7 @@ function showToast(msg) {
 
 // -- HELPERS -----------------------------------------------------------
 function statusLabel(s) {
-  return { ativo: 'Ativo', afastado: 'Afastado', liberado: 'Liberado' }[s] || s;
+  return { ativo: 'Ativo', afastado: 'Afastado', liberado: 'Liberado', arquivado: 'Arquivado' }[s] || s;
 }
 
 function calcIdade(nasc) {
@@ -4524,7 +4598,7 @@ function lsiBadge(lsi) {
 }
 
 async function renderAvaliacao() {
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   const sel = document.getElementById('av-filtro-atleta');
   const currentFilter = sel.value;
   sel.innerHTML = '<option value="">Todos os atletas</option>' +
@@ -4628,7 +4702,7 @@ async function nutPreencherDados() {
   const id = parseInt(document.getElementById('nut-atleta').value);
   if (!id) { nutAtletaCache = null; return; }
 
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   const a = athletes.find(at => at.id === id);
   if (!a) return;
 
@@ -5042,7 +5116,7 @@ ${r.observacoes?`<div class="section-title">Observações</div><p style="font-si
 };
 
 async function renderNutricional() {
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   const sel = document.getElementById('nut-filtro-atleta');
   const currentVal = sel.value;
   sel.innerHTML = '<option value="">Todos os atletas</option>' +
@@ -5098,7 +5172,7 @@ window.nutPreencherDados = nutPreencherDados;
 window.nutCalc = nutCalc;
 window.nutCalcRCQ = nutCalcRCQ;
 async function renderEvolucao() {
-  const athletes = await getAthletesByCat();
+  const athletes = await getAthletesByCat(true);
   const sel = document.getElementById('ev-atleta');
   const currentVal = sel.value;
   sel.innerHTML = '<option value="">Selecione um atleta...</option>' +
