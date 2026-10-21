@@ -2045,6 +2045,34 @@ body.dark-mode #topbar {
   </div>
 </div>
 
+<!-- MODAL AFASTAMENTO -->
+<div class="modal-overlay" id="modal-afastamento">
+  <div class="modal" style="max-width:440px;">
+    <h3>🩹 Editar Afastamento</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Início (1º dia afastado)</label>
+        <input type="date" class="form-control" id="af-inicio">
+      </div>
+      <div class="form-group">
+        <label>Fim (último dia afastado)</label>
+        <input type="date" class="form-control" id="af-fim">
+      </div>
+    </div>
+    <div id="af-fim-hint" style="font-size:11px;color:var(--cinza-texto);margin:-6px 0 14px;"></div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Motivo / Diagnóstico</label>
+        <input type="text" class="form-control" id="af-motivo" placeholder="Ex: Lesão muscular isquiotibial D grau II">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-afastamento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAfastamento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -2365,7 +2393,7 @@ async function renderDashboardAlertas(athletes) {
   const alertasEl = document.getElementById('dashboard-alertas');
   if (!alertasEl) return;
 
-  const allMon = await getMonitoringByCat();
+  const [allMon, afast] = await Promise.all([getMonitoringByCat(), mapaAfastamentos()]);
   const ctxCarga = montarContextoCarga(allMon);
   const today = hojeLocal();
   const atletaMap = {};
@@ -2429,8 +2457,23 @@ async function renderDashboardAlertas(athletes) {
     }
 
     // ACWR (dias corridos até hoje; hoje só entra se já houver carga)
-    const stats = calcStats(hist, ctxCarga, today, a.status === 'afastado');
-    if (stats.acwr !== null && stats.acwr > 1.5) {
+    const stats = calcStats(hist, ctxCarga, today, periodosAfastamento(afast[a.id], a));
+    // Retorno de afastamento: alerta próprio (já inclui o ACWR do atleta)
+    const ret = a.status !== 'afastado' ? retornoRecente(afast[a.id], today) : null;
+    if (ret) {
+      const p = ret.periodo;
+      const zona = stats.acwr === null ? 'ACWR ainda sem valor'
+        : `ACWR ${stats.acwr.toFixed(2)}${stats.acwr > 1.5 ? ' — zona de risco' : stats.acwr > 1.3 ? ' — atenção' : ''}`;
+      alertas.push({
+        tipo: 'retorno',
+        atletaId: a.id,
+        nome: a.apelido || a.nome,
+        foto: a.foto,
+        msg: `↩️ Retorno de afastamento — ${retornoTexto(ret)}`,
+        detalhe: `Afastado ${formatDate(p.inicio).slice(0,5)} a ${formatDate(p.fim).slice(0,5)} (${ret.duracao} dia${ret.duracao > 1 ? 's' : ''}) · progressão de carga · ${zona}`,
+        cor: stats.acwr !== null && stats.acwr > 1.3 ? '#ffab00' : '#60A5FA'
+      });
+    } else if (stats.acwr !== null && stats.acwr > 1.5) {
       alertas.push({
         tipo: 'acwr',
         atletaId: a.id,
@@ -2676,6 +2719,7 @@ async function openAthleteDetail(id) {
   });
 
   const monHist = (await dbGetByIndex('monitoring', 'athleteId', id)).sort((x,y) => y.data.localeCompare(x.data));
+  const afastLista = await carregarAfastamentos(id);
   let ultimoComDor = null;
   for (const m of monHist) {
     if (!m.dores_localizadas) continue;
@@ -2740,6 +2784,8 @@ async function openAthleteDetail(id) {
       </div>
     </div>` : ''}
 
+    ${renderAfastamentosFicha(afastLista, a)}
+
     <div class="sessions-section">
       <div class="sessions-header">
         <h3>📋 Prontuário (${sessions.length} atendimentos)</h3>
@@ -2769,6 +2815,96 @@ async function openAthleteDetail(id) {
     </div>
   `;
 }
+
+// Histórico de afastamentos na ficha (mais recente primeiro)
+function renderAfastamentosFicha(lista, a) {
+  if (lista === null) return '';   // tabela indisponível
+  if (!lista.length && a.status !== 'afastado') return '';
+  const hoje = hojeLocal();
+  const linhas = [...lista].sort((x, y) => y.inicio.localeCompare(x.inicio)).map(p => {
+    const fimRef = p.fim || hoje;
+    const dias = dataParaDia(fimRef) - dataParaDia(p.inicio) + 1;
+    const periodo = p.fim
+      ? `${formatDate(p.inicio)} a ${formatDate(p.fim)}`
+      : `desde ${formatDate(p.inicio)} <span class="badge badge-afastado" style="margin-left:6px;">em curso</span>`;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--cinza-borda);font-size:13px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-weight:600;">${periodo}</div>
+          <div style="font-size:12px;color:var(--cinza-texto);">${dias} dia${dias > 1 ? 's' : ''}${p.motivo ? ' · ' + escapeHtml(p.motivo) : ''}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openAfastamentoModal(${p.id})">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAfastamento(${p.id})">🗑️</button>
+      </div>`;
+  }).join('');
+  const aviso = a.status === 'afastado' && !lista.some(p => !p.fim)
+    ? `<div style="font-size:12px;color:var(--amarelo);padding:8px 0;">Atleta afastado sem início registrado: a carga de todo o histórico fica sem estimativa até o período ser registrado (mude o status para Ativo e de volta para Afastado, ou peça ao admin para incluir pelo SQL).</div>` : '';
+  return `
+    <div class="sessions-section" style="margin-bottom:20px;">
+      <div class="sessions-header">
+        <h3>🩹 Afastamentos (${lista.length})</h3>
+      </div>
+      <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:14px;padding:6px 20px;">
+        ${aviso}${linhas}
+        <div style="font-size:11px;color:var(--cinza-texto);padding:10px 0;">Aberto e fechado automaticamente quando o status muda para/de "Afastado". Nos dias afastado, a carga sem registro próprio conta 0 no ACWR.</div>
+      </div>
+    </div>`;
+}
+
+let editingAfastamento = null;
+async function openAfastamentoModal(id) {
+  const { data: p, error } = await supa.from('afastamentos').select('*').eq('id', id).single();
+  if (error || !p) { falhaGravacao(error || ERRO_SEM_LINHAS); return; }
+  const a = await dbGet('athletes', p.athleteId);
+  editingAfastamento = { ...p, statusAtleta: a?.status };
+  document.getElementById('af-inicio').value = p.inicio;
+  document.getElementById('af-fim').value = p.fim || '';
+  document.getElementById('af-motivo').value = p.motivo || '';
+  const emCurso = !p.fim && a?.status === 'afastado';
+  document.getElementById('af-fim').disabled = emCurso;
+  document.getElementById('af-fim-hint').textContent = emCurso
+    ? 'Em curso: o fim é registrado quando o status do atleta deixar de ser "Afastado".'
+    : 'Último dia afastado. O retorno é o dia seguinte.';
+  openModal('modal-afastamento');
+}
+
+async function saveAfastamento() {
+  const p = editingAfastamento;
+  if (!p) return;
+  const inicio = document.getElementById('af-inicio').value;
+  const emCurso = document.getElementById('af-fim').disabled;
+  const fim = emCurso ? null : (document.getElementById('af-fim').value || null);
+  const motivo = document.getElementById('af-motivo').value.trim() || null;
+  const hoje = hojeLocal();
+  if (!inicio) { showToast('Informe o início.'); return; }
+  if (inicio > hoje) { showToast('O início não pode ser depois de hoje.'); return; }
+  if (!emCurso && !fim) { showToast('Informe o fim (o atleta não está afastado agora).'); return; }
+  if (fim && fim < inicio) { showToast('O fim não pode ser antes do início.'); return; }
+  if (fim && fim >= hoje) { showToast('O fim é o último dia afastado: precisa ser antes de hoje.'); return; }
+  const outros = (await carregarAfastamentos(p.athleteId) || []).filter(o => o.id !== p.id);
+  const fimN = fim || '9999-12-31';
+  if (outros.some(o => o.inicio <= fimN && (o.fim || '9999-12-31') >= inicio)) {
+    showToast('Esse período se sobrepõe a outro afastamento do atleta.'); return;
+  }
+  const { data: alt, error } = await supa.from('afastamentos')
+    .update({ inicio, fim, motivo }).eq('id', p.id).select('id');
+  if (error || !alt?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return; }
+  closeModal('modal-afastamento');
+  showToast('Afastamento atualizado!');
+  openAthleteDetail(p.athleteId);
+}
+
+async function deleteAfastamento(id) {
+  if (!confirm('Excluir este período de afastamento?\n\nOs dias deixam de contar como afastamento no ACWR (passam a receber a média do time nos dias de treino).')) return;
+  const { data: p } = await supa.from('afastamentos').select('athleteId').eq('id', id).single();
+  const { data: alt, error } = await supa.from('afastamentos').delete().eq('id', id).select('id');
+  if (error || !alt?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return; }
+  showToast('Afastamento excluído.');
+  if (p) openAthleteDetail(p.athleteId);
+}
+window.openAfastamentoModal = openAfastamentoModal;
+window.saveAfastamento = saveAfastamento;
+window.deleteAfastamento = deleteAfastamento;
 
 function voltarParaLista() {
   showSection(currentSection === 'dashboard' ? 'atletas' : currentSection);
@@ -2956,15 +3092,18 @@ async function saveAthlete() {
     updatedAt: new Date().toISOString()
   };
 
-  let gravou;
+  let gravou, idSalvo = editingAthleteId, statusAntes = null;
   if (editingAthleteId) {
+    statusAntes = (await dbGet('athletes', editingAthleteId))?.status ?? null;
     obj.id = editingAthleteId;
     gravou = await dbPut('athletes', obj);
   } else {
     obj.createdAt = new Date().toISOString();
-    gravou = (await dbAdd('athletes', obj)) !== null;
+    idSalvo = await dbAdd('athletes', obj);
+    gravou = idSalvo !== null;
   }
   if (!gravou) { resetBtn(); return; }   // falhou: o modal fica aberto com os dados
+  await registrarMudancaStatus(idSalvo, statusAntes, obj.status, hojeLocal(), obj.diagnostico);
 
   if (editingAthleteId) {
     showToast('Atleta atualizado com sucesso!');
@@ -2988,9 +3127,11 @@ async function arquivarAthlete(id) {
   const a = await dbGet('athletes', id);
   if (!a) return;
   if (!confirm(`Arquivar ${a.apelido || a.nome}?\n\nEle sai das listas e dos formulários, mas o histórico fica guardado. Dá para desarquivar depois.`)) return;
+  const statusAntes = a.status;
   a.status = 'arquivado';
   a.updatedAt = new Date().toISOString();
   if (!(await dbPut('athletes', a))) return;
+  await registrarMudancaStatus(id, statusAntes, 'arquivado', hojeLocal(), null);
   showToast('Atleta arquivado.');
   openAthleteDetail(id);
 }
@@ -3012,10 +3153,10 @@ async function deleteAthlete(id) {
   const a = await dbGet('athletes', id);
   if (!a) return;
   const nome = a.apelido || a.nome;
-  if (!confirm(`EXCLUIR DE VEZ ${nome}?\n\nApaga o cadastro e TODO o histórico: atendimentos, monitoramento (Wellness/PSE), avaliações funcionais e nutricionais. Não dá para desfazer.\n\nSe o atleta só saiu do clube, use "Arquivar".`)) return;
+  if (!confirm(`EXCLUIR DE VEZ ${nome}?\n\nApaga o cadastro e TODO o histórico: atendimentos, monitoramento (Wellness/PSE), avaliações funcionais e nutricionais, afastamentos. Não dá para desfazer.\n\nSe o atleta só saiu do clube, use "Arquivar".`)) return;
   if (prompt('Para confirmar, digite EXCLUIR') !== 'EXCLUIR') { showToast('Exclusão cancelada.'); return; }
 
-  for (const tabela of ['monitoring', 'functional_assessments', 'nutritional_assessments', 'sessions']) {
+  for (const tabela of ['monitoring', 'functional_assessments', 'nutritional_assessments', 'sessions', 'afastamentos']) {
     const { error } = await supa.from(tabela).delete().eq('athleteId', id);
     if (error) {
       falhaGravacao({ message: `exclusão parou em ${tabela} (${error.message}). O cadastro não foi apagado.` });
@@ -3076,8 +3217,10 @@ async function saveSession() {
     const newStatus = document.getElementById('a-status').value;
     if (newStatus) {
       const a = await dbGet('athletes', currentAthleteId);
+      const statusAntes = a.status;
       a.status = newStatus;
       statusOk = await dbPut('athletes', a);
+      if (statusOk) await registrarMudancaStatus(a.id, statusAntes, newStatus, data, a.diagnostico);
     }
 
     closeModal('modal-atendimento');
@@ -3593,8 +3736,12 @@ async function carregarMonitorPublico() {
 // - Folga (o time não treinou) = 0 UA (Foster 1998).
 // - Dia de treino do time sem carga do atleta = média do time no dia
 //   (Griffin 2021). Dia de treino = pelo menos MIN_ATLETAS_TREINO
-//   atletas da categoria com carga lançada. Atleta afastado não recebe
-//   essa estimativa (o dia conta como 0).
+//   atletas da categoria com carga lançada.
+// - Dias de afastamento (tabela afastamentos, desde 21/10/2026) não
+//   recebem estimativa: sem carga própria, contam 0. Carga real lançada
+//   no período (ex.: recondicionamento) continua valendo.
+// - Retorno de afastamento: alerta próprio no Dashboard por
+//   JANELA_RETORNO dias (a crônica de 28 d ainda contém o afastamento).
 // - PSE enviada sem duração = PSE × mediana das durações do time no dia.
 // - O dia de hoje só entra quando o atleta já tem carga ou PSE de hoje.
 // - ACWR só com 28 dias de histórico. Monotonia = média ÷ DP (DP com n)
@@ -3603,6 +3750,103 @@ async function carregarMonitorPublico() {
 const MIN_ATLETAS_TREINO = 3;
 const LAMBDA_AGUDA = 2 / (7 + 1);
 const LAMBDA_CRONICA = 2 / (28 + 1);
+const JANELA_RETORNO = 28;   // dias de alerta depois do retorno
+
+// ── Afastamentos (histórico) ──────────────────────────────────
+// Tabela afastamentos: inicio = 1º dia afastado; fim = último dia afastado
+// (null = em curso). Aberto/fechado automaticamente quando o status muda.
+let afastamentosOk = true;   // false se a tabela não existir/não puder ser lida
+
+async function carregarAfastamentos(athleteId) {
+  let q = supa.from('afastamentos').select('*').order('inicio', { ascending: true });
+  if (athleteId) q = q.eq('athleteId', athleteId);
+  const { data, error } = await q;
+  if (error) { console.error(error); afastamentosOk = false; return null; }
+  afastamentosOk = true;
+  return data || [];
+}
+
+async function mapaAfastamentos() {
+  const lista = await carregarAfastamentos();
+  const mapa = {};
+  (lista || []).forEach(p => (mapa[p.athleteId] = mapa[p.athleteId] || []).push(p));
+  return mapa;
+}
+
+// Períodos do atleta em números de dia, para o cálculo de carga.
+// Atleta afastado agora sem período aberto (cadastro antigo ou tabela
+// indisponível): regra anterior, todo o histórico sem estimativa.
+function periodosAfastamento(lista, atleta) {
+  const per = (lista || []).map(p => ({
+    ini: dataParaDia(p.inicio),
+    fim: p.fim ? dataParaDia(p.fim) : Infinity
+  }));
+  if (atleta?.status === 'afastado' && !per.some(p => p.fim === Infinity)) {
+    per.push({ ini: -Infinity, fim: Infinity });
+  }
+  return per;
+}
+
+function afastadoNoDia(periodos, dia) {
+  return (periodos || []).some(p => dia >= p.ini && dia <= p.fim);
+}
+
+// Retorno recente em relação a refData: último período fechado cujo dia de
+// retorno (fim + 1) está nos últimos JANELA_RETORNO dias. null se não houver
+// ou se o atleta estiver afastado em refData.
+function retornoRecente(lista, refData) {
+  const ref = dataParaDia(refData);
+  const per = lista || [];
+  if (per.some(p => dataParaDia(p.inicio) <= ref && (!p.fim || dataParaDia(p.fim) >= ref))) return null;
+  const fechados = per.filter(p => p.fim && dataParaDia(p.fim) < ref)
+    .sort((a, b) => b.fim.localeCompare(a.fim));
+  if (!fechados.length) return null;
+  const p = fechados[0];
+  const diasDesde = ref - (dataParaDia(p.fim) + 1);
+  if (diasDesde < 0 || diasDesde >= JANELA_RETORNO) return null;
+  return { periodo: p, diasDesde, duracao: dataParaDia(p.fim) - dataParaDia(p.inicio) + 1 };
+}
+
+function retornoTexto(ret) {
+  return ret.diasDesde === 0 ? 'voltou hoje' : `há ${ret.diasDesde} dia${ret.diasDesde > 1 ? 's' : ''}`;
+}
+
+// Registra a mudança de status no histórico. data = dia da mudança.
+// → afastado: abre período (inicio = data). afastado →: fecha (fim = data − 1).
+// Devolve false se não conseguiu gravar.
+async function registrarMudancaStatus(athleteId, de, para, data, motivo) {
+  if (de === para) return true;
+  try {
+    if (para === 'afastado') {
+      const { data: abertos, error: e1 } = await supa.from('afastamentos').select('id')
+        .eq('athleteId', athleteId).is('fim', null);
+      if (e1) throw e1;
+      if (abertos?.length) return true;
+      const { error } = await supa.from('afastamentos').insert({
+        athleteId, inicio: data, motivo: motivo || null, createdAt: new Date().toISOString()
+      });
+      if (error) throw error;
+    } else if (de === 'afastado') {
+      const { data: abertos, error: e1 } = await supa.from('afastamentos').select('*')
+        .eq('athleteId', athleteId).is('fim', null);
+      if (e1) throw e1;
+      for (const p of (abertos || [])) {
+        const fim = diaParaData(dataParaDia(data) - 1);
+        const q = fim < p.inicio
+          ? supa.from('afastamentos').delete().eq('id', p.id).select('id')   // voltou no mesmo dia
+          : supa.from('afastamentos').update({ fim }).eq('id', p.id).select('id');
+        const { data: alt, error } = await q;
+        if (error) throw error;
+        if (!alt?.length) throw ERRO_SEM_LINHAS;
+      }
+    }
+    return true;
+  } catch (e) {
+    console.error(e);
+    showToast('⚠️ Status salvo, mas o histórico de afastamento não foi atualizado: ' + (e?.message || 'erro'));
+    return false;
+  }
+}
 
 // 'AAAA-MM-DD' <-> número do dia (contagem em UTC, sem horário de verão)
 function dataParaDia(s) {
@@ -3646,20 +3890,22 @@ function montarContextoCarga(allMon) {
   return porDia;
 }
 
-// Carga de um dia do atleta → { carga, tipo: 'real' | 'estimada' | 'folga' | 'sem_dado' }
+// Carga de um dia do atleta → { carga, tipo: 'real' | 'estimada' | 'folga' | 'sem_dado' | 'afastado' }
 function cargaDoDia(r, data, ctx, afastado) {
   if (temCargaReal(r)) return { carga: Number(r.pse_carga), tipo: 'real' };
+  if (afastado) return { carga: 0, tipo: 'afastado' };   // afastado: sem estimativa
   const t = ctx[data];
   const pse = r ? (Number(r.pse_intensidade) || 0) : 0;
   if (pse > 0 && t && t.medianaDuracao) return { carga: pse * t.medianaDuracao, tipo: 'estimada' };
   if (pse > 0) return { carga: 0, tipo: 'sem_dado' };   // treinou, mas não há duração para estimar
-  if (!afastado && t && t.treino) return { carga: t.mediaTime, tipo: 'estimada' };
+  if (t && t.treino) return { carga: t.mediaTime, tipo: 'estimada' };
   return { carga: 0, tipo: 'folga' };
 }
 
 // registros: monitoramento de UM atleta; ctx: montarContextoCarga() da categoria;
-// refData: último dia considerado ('AAAA-MM-DD'); afastado: status atual do atleta
-function calcStats(registros, ctx, refData, afastado = false) {
+// refData: último dia considerado ('AAAA-MM-DD');
+// periodos: periodosAfastamento() do atleta (dias afastado não recebem estimativa)
+function calcStats(registros, ctx, refData, periodos = []) {
   ctx = ctx || montarContextoCarga(registros);
   refData = refData || hojeLocal();
   const vazio = { acwr: null, ewma: null, cargaSemana: null, monotonia: null, strain: null,
@@ -3681,7 +3927,7 @@ function calcStats(registros, ctx, refData, afastado = false) {
   const serie = [];
   for (let d = ini; d <= fim; d++) {
     const ds = diaParaData(d);
-    serie.push(cargaDoDia(porData[ds], ds, ctx, afastado));
+    serie.push(cargaDoDia(porData[ds], ds, ctx, afastadoNoDia(periodos, d)));
   }
   const n = serie.length;
   const ult7 = serie.slice(-7);
@@ -3818,6 +4064,7 @@ async function renderMonitoramento() {
   } else {
     [athletes, allMon] = await Promise.all([getAthletesByCat(), getMonitoringByCat()]);
   }
+  const afast = publico ? {} : await mapaAfastamentos();
   // No painel público o servidor já devolve só os registros de hoje
   const monDia = publico ? allMon : allMon.filter(m => m.data === data);
   const ctxCarga = montarContextoCarga(allMon);
@@ -3884,10 +4131,15 @@ async function renderMonitoramento() {
       ${ativos.map(a => {
         const m = monDia.find(r => r.athleteId == a.id);
         const hist = allMon.filter(r => r.athleteId == a.id);
-        const stats = calcStats(hist, ctxCarga, data, a.status === 'afastado');
+        const per = periodosAfastamento(afast[a.id], a);
+        const stats = calcStats(hist, ctxCarga, data, per);
+        const ret = retornoRecente(afast[a.id], data);
+        const tag = afastadoNoDia(per, dataParaDia(data))
+          ? ' <span class="mon-badge" style="background:rgba(255,179,0,0.15);color:var(--amarelo);font-size:10px;" title="Afastado nesta data: sem carga estimada">Afastado</span>'
+          : ret ? ` <span class="mon-badge" style="background:rgba(96,165,250,0.15);color:#60A5FA;font-size:10px;" title="Retorno de afastamento ${retornoTexto(ret)} (afastado ${ret.duracao} dia${ret.duracao > 1 ? 's' : ''})">↩️ D+${ret.diasDesde}</span>` : '';
         return `
           <div style="display:grid;grid-template-columns:2fr 0.8fr 1.2fr 1fr 1.3fr 1.3fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--cinza-borda);align-items:center;font-size:13px;">
-            <div style="font-weight:600;">${a.apelido || a.nome}</div>
+            <div style="font-weight:600;">${a.apelido || a.nome}${tag}</div>
             <div>${m?.pse_intensidade ?? '—'}</div>
             <div>
               ${m ? `<input class="mon-dur-input" type="number" min="1" max="300" placeholder="min"
@@ -3913,6 +4165,11 @@ async function renderMonitoramento() {
         <span><span class="mon-badge mon-verde">≤ 2.0</span> Variação adequada</span>
         <span><span class="mon-badge mon-vermelho">&gt; 2.0</span> Carga muito uniforme — alerta</span>
         <span style="color:var(--cinza-texto);">Média ÷ desvio-padrão da carga dos últimos 7 dias. Passe o mouse para ver o strain.</span>
+      </div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin:16px 0 10px;">Afastamento</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;">
+        <span><span class="mon-badge" style="background:rgba(255,179,0,0.15);color:var(--amarelo);">Afastado</span> Dias sem carga própria contam 0 (sem média do time)</span>
+        <span><span class="mon-badge" style="background:rgba(96,165,250,0.15);color:#60A5FA;">↩️ D+n</span> Dias desde o retorno (acompanhamento por ${JANELA_RETORNO} dias)</span>
       </div>
     </div>` : ''}`}`;
 }
@@ -5333,7 +5590,8 @@ async function renderEvolucaoMonitoramento(athleteId, container) {
   const allMon = await getMonitoringByCat();
   const ctxCarga = montarContextoCarga(allMon);
   const atleta = await dbGet('athletes', athleteId);
-  const afastado = atleta?.status === 'afastado';
+  const afastLista = await carregarAfastamentos(athleteId);
+  const periodos = periodosAfastamento(afastLista, atleta);
   const histTodo = allMon.filter(m => m.athleteId == athleteId)
     .sort((a,b) => a.data.localeCompare(b.data));
 
@@ -5350,7 +5608,11 @@ async function renderEvolucaoMonitoramento(athleteId, container) {
   for (let d = iniDia; d <= fimDia; d++) labels.push(diaParaData(d));
   const hist = labels.map(dt => porData[dt] || {});
   // ACWR de cada dia calculado com todo o histórico até aquele dia (dias corridos)
-  const statsPorData = labels.map(dt => calcStats(histTodo, ctxCarga, dt, afastado));
+  const statsPorData = labels.map(dt => calcStats(histTodo, ctxCarga, dt, periodos));
+  // Afastamentos que tocam a janela do gráfico
+  const afastJanela = (afastLista || []).filter(p =>
+    p.inicio <= labels[labels.length-1] && (!p.fim || p.fim >= labels[0]))
+    .map(p => `${formatDate(p.inicio).slice(0,5)}–${p.fim ? formatDate(p.fim).slice(0,5) : 'em curso'}`);
   const acwrData = statsPorData.map(s => s.acwr !== null ? parseFloat(s.acwr.toFixed(2)) : null);
   const ewmaData = statsPorData.map(s => s.ewma !== null ? parseFloat(s.ewma.toFixed(2)) : null);
 
@@ -5364,7 +5626,7 @@ async function renderEvolucaoMonitoramento(athleteId, container) {
     makeChart('ACWR', labels,
       [{data:acwrData,color:'#ffab00'},{data:ewmaData,color:'#a78bfa'}],
       '',[{label:'ACWR — média móvel 7:28 (alertas)',color:'#ffab00'},{label:'ACWR — EWMA (comparação)',color:'#a78bfa'}]) +
-    `<div style="font-size:11px;color:var(--cinza-texto);margin:-8px 0 16px;">Um ponto por dia (últimos 30 dias); dia sem registro aparece como lacuna. ACWR em dias corridos: folga = 0; dia de treino sem carga do atleta = média do time no dia. Exibido a partir de 28 dias de histórico.</div>`;
+    `<div style="font-size:11px;color:var(--cinza-texto);margin:-8px 0 16px;">Um ponto por dia (últimos 30 dias); dia sem registro aparece como lacuna. ACWR em dias corridos: folga = 0; dia de treino sem carga do atleta = média do time no dia (em afastamento = 0). Exibido a partir de 28 dias de histórico.${afastJanela.length ? ` <strong style="color:var(--amarelo);">Afastamento no período: ${afastJanela.join(', ')}.</strong>` : ''}</div>`;
 }
 
 async function renderEvolucaoAvaliacao(athleteId, container) {
