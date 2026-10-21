@@ -2062,6 +2062,17 @@ const SUPA_URL  = 'https://zopczkxnxjehfizubhew.supabase.co';
 const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcGN6a3hueGplaGZpenViaGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNTI4NzIsImV4cCI6MjA5MjgyODg3Mn0.Kl5tf9JMr8PjsXOpVvVxMgUUi2SJOHcFsX7U5m_nPhQ';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
+// -- DATA LOCAL ------------------------------------------------------
+// Retorna a data de hoje no fuso do aparelho (AAAA-MM-DD).
+// Não usar toISOString() para "hoje": ela devolve UTC e, no Brasil,
+// registros feitos depois das 21h cairiam no dia seguinte.
+function hojeLocal() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 function sbStatus(state, msg) {
   document.getElementById('sb-dot').className = state;
   document.getElementById('sb-txt').textContent = msg;
@@ -2242,7 +2253,7 @@ async function init() {
   const now = new Date();
   document.getElementById('date-display').textContent =
     now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-  document.getElementById('a-data').value = now.toISOString().split('T')[0];
+  document.getElementById('a-data').value = hojeLocal();
   renderDashboard();
 }
 
@@ -2301,7 +2312,7 @@ async function renderDashboard() {
   document.getElementById('stat-total-atend').textContent = sessions.length;
   document.getElementById('stat-total-atletas').textContent = athletes.length;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = hojeLocal();
   const todaySessions = sessions.filter(s => s.data === today);
 
   const todayList = document.getElementById('today-list');
@@ -2333,7 +2344,7 @@ async function renderDashboardAlertas(athletes) {
   if (!alertasEl) return;
 
   const allMon = await getMonitoringByCat();
-  const today = new Date().toISOString().split('T')[0];
+  const today = hojeLocal();
   const atletaMap = {};
   athletes.forEach(a => atletaMap[a.id] = a);
 
@@ -2931,7 +2942,7 @@ async function deleteAthlete(id) {
 
 function openSessionModal(athleteId) {
   currentAthleteId = athleteId;
-  document.getElementById('a-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('a-data').value = hojeLocal();
   document.getElementById('a-procedimentos').value = '';
   document.getElementById('a-evolucao').value = '';
   document.getElementById('a-status').value = '';
@@ -3391,7 +3402,7 @@ async function submitWellness() {
   const btn = document.getElementById('w-btn-send');
   btn.disabled = true; btn.textContent = 'Enviando...';
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = hojeLocal();
   const sono = parseInt(document.getElementById('w-sono').value);
   const dor = parseInt(document.getElementById('w-dor').value);
   const fadiga = parseInt(document.getElementById('w-fadiga').value);
@@ -3433,7 +3444,7 @@ async function submitPse() {
   const btn = document.getElementById('p-btn-send');
   btn.disabled = true; btn.textContent = 'Enviando...';
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = hojeLocal();
   const pse = parseInt(document.getElementById('p-pse').value);
 
   try {
@@ -3561,7 +3572,7 @@ async function saveDuracao(monId, dur, pse) {
 
 async function renderMonitoramento() {
   const dateEl = document.getElementById('mon-data');
-  if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+  if (!dateEl.value) dateEl.value = hojeLocal();
   const data = dateEl.value;
 
   const [athletes, allMon] = await Promise.all([getAthletesByCat(), getMonitoringByCat()]);
@@ -3846,7 +3857,7 @@ async function openManualMonModal() {
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 
-  document.getElementById('mm-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('mm-data').value = hojeLocal();
   ['sono','dor','fadiga','humor','estresse'].forEach(f => {
     document.getElementById('mm-'+f).value = 3;
     document.getElementById('mm-lbl-'+f).textContent = 3;
@@ -4105,7 +4116,7 @@ window.openAvaliacaoModal = async function openAvaliacaoModal(id) {
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 
-  document.getElementById('av-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('av-data').value = hojeLocal();
 
   // Reset all fields
   const inputs = document.querySelectorAll('#modal-avaliacao input[type="number"], #modal-avaliacao textarea');
@@ -4566,7 +4577,7 @@ window.openNutricionalModal = async function(id) {
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
       .map(a => `<option value="${a.id}">${a.apelido||a.nome}</option>`).join('');
 
-  document.getElementById('nut-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('nut-data').value = hojeLocal();
   nutAtletaCache = null;
 
   // Reset fields
