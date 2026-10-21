@@ -1252,7 +1252,7 @@ body.dark-mode #topbar {
       </div>
       <div class="form-group">
         <label>Data</label>
-        <input type="date" class="form-control" id="av-data">
+        <input type="date" class="form-control" id="av-data" onchange="avAtualizarIdade()">
       </div>
     </div>
 
@@ -4350,15 +4350,29 @@ function avCalcYBT(side) {
   } else { lsiEl.textContent = '—'; }
 }
 
+// Avaliação nova: idade na data do campo av-data.
+// Edição: mostra a idade gravada na avaliação (o update não altera a idade).
+let avAtletaCache = null;
+let avIdadeFixa = null;
+function avIdade() {
+  if (avIdadeFixa !== null && avIdadeFixa !== undefined) return avIdadeFixa;
+  return idadeNaData(avAtletaCache?.nasc, document.getElementById('av-data')?.value || hojeLocal());
+}
+function avAtualizarIdade() {
+  const idade = avIdade();
+  document.getElementById('av-info-idade').textContent = idade !== null ? idade + ' anos' : '—';
+}
+window.avAtualizarIdade = avAtualizarIdade;
+
 async function avPreencherDados() {
   const id = parseInt(document.getElementById('av-atleta').value);
   if (!id) return;
   const a = await dbGet('athletes', id);
   if (!a) return;
+  avAtletaCache = a;
   document.getElementById('av-info-peso').textContent = a.peso ? a.peso + ' kg' : '—';
   document.getElementById('av-info-altura').textContent = a.altura ? a.altura + ' m' : '—';
-  const idade = a.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
-  document.getElementById('av-info-idade').textContent = idade ? idade + ' anos' : '—';
+  avAtualizarIdade();
   document.getElementById('av-info-posicao').textContent = a.posicao || '—';
 }
 
@@ -4371,6 +4385,8 @@ window.openAvaliacaoModal = async function openAvaliacaoModal(id) {
       .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
 
   document.getElementById('av-data').value = hojeLocal();
+  avAtletaCache = null;
+  avIdadeFixa = null;
 
   // Reset all fields
   const inputs = document.querySelectorAll('#modal-avaliacao input[type="number"], #modal-avaliacao textarea');
@@ -4427,7 +4443,7 @@ window.saveAvaliacao = async function saveAvaliacao() {
 
   try {
     const a = await dbGet('athletes', athleteId);
-    const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
+    const idade = idadeNaData(a?.nasc, data);   // idade na data da avaliação
 
     const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
 
@@ -4524,10 +4540,12 @@ async function editAvaliacao(id) {
   if (!r) return;
 
   await openAvaliacaoModal(r.athleteId);
+  avIdadeFixa = r.idade ?? null;   // avaliação já gravada: mantém a idade original
 
   const s = (fieldId, val) => { const el = document.getElementById(fieldId); if(el && val !== null && val !== undefined) el.value = val; };
 
   s('av-data', r.data);
+  avAtualizarIdade();
   s('av-mmii-d', r.mmii_d); s('av-mmii-e', r.mmii_e);
   s('av-squeeze-d', r.squeeze_d); s('av-squeeze-e', r.squeeze_e);
   s('av-lunge-d', r.lunge_d); s('av-lunge-e', r.lunge_e);
