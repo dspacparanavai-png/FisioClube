@@ -109,6 +109,7 @@
   body.public-monitor #main { margin-left: 0 !important; }
   body.public-monitor .mon-dur-input { pointer-events: none; opacity: 0.6; }
   body.public-monitor .cat-selector { display: none !important; }
+  body.public-monitor #mon-actions-row { display: none !important; }
   body.public-monitor #topbar-title::after {
     content: '● AO VIVO';
     margin-left: 12px;
@@ -3310,7 +3311,8 @@ setTimeout(() => {
   }
 }, 500);
 
-init();
+// init() roda só depois do login (onLogin). Antes ele rodava aqui também,
+// consultando o banco como anon em todas as páginas.
 
 function toggleTheme() {
   document.body.classList.toggle('dark-mode');
@@ -3363,79 +3365,77 @@ function wSelectUrina(n) {
   document.getElementById('w-urina-label').textContent = URINA_NOMES[n] || '';
 }
 
-async function wConfirmAtleta() {
-  const id = parseInt(document.getElementById('w-atleta').value);
-  const confirmDiv = document.getElementById('w-atleta-confirm');
+// Atletas listados nos formulários públicos (#wellness / #pse).
+// Vêm da função fc_atletas_publicos(): só id, nome, apelido e foto,
+// sem dados clínicos. O papel anon não lê mais a tabela athletes.
+let atletasPublicos = [];
+
+function confirmarAtletaPublico(selId, prefixo) {
+  const id = parseInt(document.getElementById(selId).value);
+  const confirmDiv = document.getElementById(prefixo + '-atleta-confirm');
   if (!id) { confirmDiv.style.display = 'none'; return; }
-  const a = await dbGet('athletes', id);
-  if (!a) return;
-  document.getElementById('w-atleta-nome').textContent = a.apelido || a.nome;
-  const fotoEl = document.getElementById('w-atleta-foto');
+  const a = atletasPublicos.find(x => x.id === id);
+  if (!a) { confirmDiv.style.display = 'none'; return; }
+  document.getElementById(prefixo + '-atleta-nome').textContent = a.apelido || a.nome;
+  const fotoEl = document.getElementById(prefixo + '-atleta-foto');
   fotoEl.innerHTML = a.foto ? `<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover;">` : '⚽';
   confirmDiv.style.display = 'flex';
 }
 
-async function pConfirmAtleta() {
-  const id = parseInt(document.getElementById('p-atleta').value);
-  const confirmDiv = document.getElementById('p-atleta-confirm');
-  if (!id) { confirmDiv.style.display = 'none'; return; }
-  const a = await dbGet('athletes', id);
-  if (!a) return;
-  document.getElementById('p-atleta-nome').textContent = a.apelido || a.nome;
-  const fotoEl = document.getElementById('p-atleta-foto');
-  fotoEl.innerHTML = a.foto ? `<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover;">` : '⚽';
-  confirmDiv.style.display = 'flex';
-}
+function wConfirmAtleta() { confirmarAtletaPublico('w-atleta', 'w'); }
+function pConfirmAtleta() { confirmarAtletaPublico('p-atleta', 'p'); }
 
 async function loadAtletasSelect(selId) {
-  const athletes = await dbGetAll('athletes');
   const sel = document.getElementById(selId);
+  const { data, error } = await supa.rpc('fc_atletas_publicos');
+  if (error) {
+    console.error(error);
+    sel.innerHTML = '<option value="">Erro ao carregar a lista. Recarregue a página.</option>';
+    return;
+  }
+  atletasPublicos = (data || []).map(a => ({ ...a, id: Number(a.id) }));
   sel.innerHTML = '<option value="">Selecione seu nome...</option>' +
-    athletes.filter(a => (a.status === 'ativo' || a.status === 'afastado') && (a.categoria || 'Profissional') === 'Profissional')
+    [...atletasPublicos]
       .sort((a,b) => (a.apelido||a.nome).localeCompare(b.apelido||b.nome,'pt-BR'))
-      .map(a => `<option value="${a.id}">${a.apelido || a.nome}</option>`).join('');
+      .map(a => `<option value="${a.id}">${escapeHtml(a.apelido || a.nome)}</option>`).join('');
 }
 
+// Wellness e PSE são gravados pelas funções fc_enviar_wellness / fc_enviar_pse.
+// A data é definida pelo servidor (fuso de Brasília): só o dia de hoje.
 async function submitWellness() {
   const athleteId = parseInt(document.getElementById('w-atleta').value);
   if (!athleteId) { showToast('Selecione seu nome!'); return; }
   const btn = document.getElementById('w-btn-send');
   btn.disabled = true; btn.textContent = 'Enviando...';
 
-  const today = hojeLocal();
-  const sono = parseInt(document.getElementById('w-sono').value);
-  const dor = parseInt(document.getElementById('w-dor').value);
-  const fadiga = parseInt(document.getElementById('w-fadiga').value);
-  const humor = parseInt(document.getElementById('w-humor').value);
-  const estresse = parseInt(document.getElementById('w-estresse').value);
-  const hooper = sono + dor + fadiga + humor + estresse;
-  const recuperacao = parseInt(document.getElementById('w-rec').value);
-  const hidratacao = wUrina;
+  const { data: hooper, error } = await supa.rpc('fc_enviar_wellness', {
+    p_athlete_id:  athleteId,
+    p_sono:        parseInt(document.getElementById('w-sono').value),
+    p_dor:         parseInt(document.getElementById('w-dor').value),
+    p_fadiga:      parseInt(document.getElementById('w-fadiga').value),
+    p_humor:       parseInt(document.getElementById('w-humor').value),
+    p_estresse:    parseInt(document.getElementById('w-estresse').value),
+    p_recuperacao: parseInt(document.getElementById('w-rec').value),
+    p_hidratacao:  wUrina,
+    p_dores:       document.getElementById('w-dores')?.value || '[]'
+  });
 
-  try {
-    // Check if already exists for today
-    const { data: existing } = await supa.from('monitoring').select('id').eq('athleteId', athleteId).eq('data', today);
-
-    if (existing && existing.length > 0) {
-      await supa.from('monitoring').update({ sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true, dores_localizadas: document.getElementById('w-dores')?.value||'[]' }).eq('id', existing[0].id);
-    } else {
-      await supa.from('monitoring').insert({ athleteId, data: today, sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao, preenchido_pre: true, dores_localizadas: document.getElementById('w-dores')?.value||'[]', createdAt: new Date().toISOString() });
-    }
-
-    document.getElementById('view-wellness').innerHTML = `
-      <div class="wellness-box" style="text-align:center;">
-        <div style="font-size:48px;margin-bottom:16px;">✅</div>
-        <h2>Wellness enviado!</h2>
-        <div class="sub">Hooper Index: <strong style="color:var(--acento);">${hooper}/25</strong></div>
-        <div style="margin-top:20px;font-size:13px;color:var(--cinza-texto);">Obrigado! Não esqueça de informar a PSE após o treino.</div>
-        <button onclick="location.reload()" class="send-btn" style="margin-top:24px;background:var(--cinza-card);border:1px solid var(--cinza-borda);color:var(--branco);">+ Próximo atleta</button>
-      </div>`;
-  } catch(e) {
-    console.error(e);
+  if (error) {
+    console.error(error);
     btn.disabled = false;
     btn.textContent = 'Enviar Wellness';
     showToast('Erro ao enviar. Tente novamente.');
+    return;
   }
+
+  document.getElementById('view-wellness').innerHTML = `
+    <div class="wellness-box" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">✅</div>
+      <h2>Wellness enviado!</h2>
+      <div class="sub">Hooper Index: <strong style="color:var(--acento);">${hooper}/25</strong></div>
+      <div style="margin-top:20px;font-size:13px;color:var(--cinza-texto);">Obrigado! Não esqueça de informar a PSE após o treino.</div>
+      <button onclick="location.reload()" class="send-btn" style="margin-top:24px;background:var(--cinza-card);border:1px solid var(--cinza-borda);color:var(--branco);">+ Próximo atleta</button>
+    </div>`;
 }
 
 async function submitPse() {
@@ -3444,32 +3444,39 @@ async function submitPse() {
   const btn = document.getElementById('p-btn-send');
   btn.disabled = true; btn.textContent = 'Enviando...';
 
-  const today = hojeLocal();
   const pse = parseInt(document.getElementById('p-pse').value);
+  const { error } = await supa.rpc('fc_enviar_pse', { p_athlete_id: athleteId, p_pse: pse });
 
-  try {
-    const { data: existing } = await supa.from('monitoring').select('id,pse_duracao').eq('athleteId', athleteId).eq('data', today);
-    const carga = (existing && existing.length > 0 && existing[0].pse_duracao) ? pse * existing[0].pse_duracao : null;
-
-    if (existing && existing.length > 0) {
-      await supa.from('monitoring').update({ pse_intensidade: pse, pse_carga: carga, preenchido_pos: true }).eq('id', existing[0].id);
-    } else {
-      await supa.from('monitoring').insert({ athleteId, data: today, pse_intensidade: pse, preenchido_pos: true, createdAt: new Date().toISOString() });
-    }
-
-    document.getElementById('view-pse-form').innerHTML = `
-      <div class="wellness-box" style="text-align:center;">
-        <div style="font-size:48px;margin-bottom:16px;">✅</div>
-        <h2>PSE enviada!</h2>
-        <div class="sub">Intensidade registrada: <strong style="color:var(--acento);">${pse}/10 — ${PSE_NOMES[pse]}</strong></div>
-        <button onclick="location.reload()" class="send-btn" style="margin-top:24px;background:var(--cinza-card);border:1px solid var(--cinza-borda);color:var(--branco);">+ Próximo atleta</button>
-      </div>`;
-  } catch(e) {
-    console.error(e);
+  if (error) {
+    console.error(error);
     btn.disabled = false;
     btn.textContent = 'Enviar PSE';
     showToast('Erro ao enviar. Tente novamente.');
+    return;
   }
+
+  document.getElementById('view-pse-form').innerHTML = `
+    <div class="wellness-box" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:16px;">✅</div>
+      <h2>PSE enviada!</h2>
+      <div class="sub">Intensidade registrada: <strong style="color:var(--acento);">${pse}/10 — ${PSE_NOMES[pse]}</strong></div>
+      <button onclick="location.reload()" class="send-btn" style="margin-top:24px;background:var(--cinza-card);border:1px solid var(--cinza-borda);color:var(--branco);">+ Próximo atleta</button>
+    </div>`;
+}
+
+// Painel público (#monitor): dados de hoje vindos de fc_monitor_hoje(),
+// só Profissional e só as colunas da tabela Wellness.
+async function carregarMonitorPublico() {
+  const { data, error } = await supa.rpc('fc_monitor_hoje');
+  if (error) { console.error(error); return { athletes: [], allMon: [] }; }
+  const linhas = data || [];
+  const athletes = linhas.map(r => ({
+    id: Number(r.id), nome: r.nome, apelido: r.apelido,
+    status: 'ativo', categoria: 'Profissional'
+  }));
+  const allMon = linhas.filter(r => r.registro)
+    .map(r => ({ ...r.registro, athleteId: Number(r.registro.athleteId) }));
+  return { athletes, allMon };
 }
 
 // ── Monitoramento (visão do fisio) ────────────────────────────
@@ -3575,8 +3582,15 @@ async function renderMonitoramento() {
   if (!dateEl.value) dateEl.value = hojeLocal();
   const data = dateEl.value;
 
-  const [athletes, allMon] = await Promise.all([getAthletesByCat(), getMonitoringByCat()]);
-  const monDia = allMon.filter(m => m.data === data);
+  const publico = document.body.classList.contains('public-monitor');
+  let athletes, allMon;
+  if (publico) {
+    ({ athletes, allMon } = await carregarMonitorPublico());
+  } else {
+    [athletes, allMon] = await Promise.all([getAthletesByCat(), getMonitoringByCat()]);
+  }
+  // No painel público o servidor já devolve só os registros de hoje
+  const monDia = publico ? allMon : allMon.filter(m => m.data === data);
   const atletaMap = {};
   athletes.forEach(a => atletaMap[a.id] = a);
 
