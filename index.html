@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-title" content="FisioClube">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#b1112b">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#E0282E">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff2d2d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FisioClube">
@@ -2098,27 +2095,40 @@ async function dbGetByIndex(table, col, value) {
   return data || [];
 }
 
+// Gravações: toda falha avisa o usuário e devolve null/false, para a tela
+// não mostrar "salvo" sem ter salvo. update/delete conferem as linhas
+// afetadas (.select): o RLS pode recusar sem devolver erro (0 linhas).
+const ERRO_SEM_LINHAS = { message: 'nenhum registro foi alterado (sem permissão ou registro inexistente)' };
+
+function falhaGravacao(error) {
+  console.error(error);
+  sbStatus('err', 'Falha ao gravar no banco');
+  showToast('⚠️ Não foi salvo: ' + (error?.message || 'erro no banco de dados'));
+}
+
 async function dbAdd(table, obj) {
   if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return null; }
   const { data, error } = await supa.from(table).insert(obj).select().single();
-  if (error) { console.error(error); return null; }
+  if (error || !data) { falhaGravacao(error || ERRO_SEM_LINHAS); return null; }
   sbStatus('ok', 'Supabase conectado');
   return data.id;
 }
 
 async function dbPut(table, obj) {
-  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return; }
+  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return false; }
   const { id, ...rest } = obj;
-  const { error } = await supa.from(table).update(rest).eq('id', id);
-  if (error) { console.error(error); return; }
+  const { data, error } = await supa.from(table).update(rest).eq('id', id).select('id');
+  if (error || !data?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return false; }
   sbStatus('ok', 'Supabase conectado');
+  return true;
 }
 
 async function dbDelete(table, id) {
-  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return; }
-  const { error } = await supa.from(table).delete().eq('id', id);
-  if (error) { console.error(error); return; }
+  if (currentRole === 'diretoria') { showToast('Acesso somente leitura — ação não permitida.'); return false; }
+  const { data, error } = await supa.from(table).delete().eq('id', id).select('id');
+  if (error || !data?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return false; }
   sbStatus('ok', 'Supabase conectado');
+  return true;
 }
 
 // -- STATE -------------------------------------------------------------
@@ -2352,6 +2362,7 @@ async function renderDashboardAlertas(athletes) {
 
   const alertas = [];
 
+  // Alertas só para o Profissional, mesmo com Sub-14/Sub-16 selecionado (decisão de 21/10/2026).
   athletes.filter(a => (a.status === 'ativo' || a.status === 'afastado') && (a.categoria || 'Profissional') === 'Profissional').forEach(a => {
     const hist = allMon.filter(m => m.athleteId == a.id).sort((x,y) => y.data.localeCompare(x.data));
 
@@ -2882,7 +2893,7 @@ async function saveAthlete() {
   const saveBtn = document.querySelector('#modal-atleta .btn-primary');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
 
-  const resetBtn = () => { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Salvar'; } };
+  const resetBtn = () => { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Salvar Atleta'; } };
 
   sbStatus('syn', '🔄 Salvando atleta...');
 
@@ -2913,16 +2924,22 @@ async function saveAthlete() {
     updatedAt: new Date().toISOString()
   };
 
+  let gravou;
   if (editingAthleteId) {
     obj.id = editingAthleteId;
-    await dbPut('athletes', obj);
+    gravou = await dbPut('athletes', obj);
+  } else {
+    obj.createdAt = new Date().toISOString();
+    gravou = (await dbAdd('athletes', obj)) !== null;
+  }
+  if (!gravou) { resetBtn(); return; }   // falhou: o modal fica aberto com os dados
+
+  if (editingAthleteId) {
     showToast('Atleta atualizado com sucesso!');
     if (currentSection === 'detalhe' || document.getElementById('view-detalhe').classList.contains('active')) {
       openAthleteDetail(editingAthleteId);
     }
   } else {
-    obj.createdAt = new Date().toISOString();
-    await dbAdd('athletes', obj);
     showToast('Atleta cadastrado com sucesso!');
   }
 
@@ -2935,7 +2952,7 @@ async function saveAthlete() {
 
 async function deleteAthlete(id) {
   if (!confirm('Tem certeza que deseja excluir este atleta? Todos os atendimentos serão perdidos.')) return;
-  await dbDelete('athletes', id);
+  if (!(await dbDelete('athletes', id))) return;
   const sessions = await dbGetByIndex('sessions', 'athleteId', id);
   for (const s of sessions) await dbDelete('sessions', s.id);
   showToast('Atleta excluído.');
@@ -2970,22 +2987,24 @@ async function saveSession() {
       if (p) physioNome = p.nome;
     }
 
-    await dbAdd('sessions', {
+    const novoId = await dbAdd('sessions', {
       physioId, physioNome,
       athleteId: currentAthleteId,
       data, procedimentos, evolucao,
       createdAt: new Date().toISOString()
     });
+    if (novoId === null) return;   // falhou: o modal fica aberto
 
+    let statusOk = true;
     const newStatus = document.getElementById('a-status').value;
     if (newStatus) {
       const a = await dbGet('athletes', currentAthleteId);
       a.status = newStatus;
-      await dbPut('athletes', a);
+      statusOk = await dbPut('athletes', a);
     }
 
     closeModal('modal-atendimento');
-    showToast('Atendimento registrado!');
+    showToast(statusOk ? 'Atendimento registrado!' : '⚠️ Atendimento registrado, mas o status do atleta não foi alterado.');
     await openAthleteDetail(currentAthleteId);
     renderDashboard();
   } catch(e) {
@@ -3011,7 +3030,7 @@ async function updateSession() {
   s.data = document.getElementById('es-data').value;
   s.procedimentos = document.getElementById('es-procedimentos').value.trim();
   s.evolucao = document.getElementById('es-evolucao').value.trim();
-  await dbPut('sessions', s);
+  if (!(await dbPut('sessions', s))) return;
   closeModal('modal-edit-sessao');
   showToast('Atendimento atualizado!');
   await openAthleteDetail(s.athleteId);
@@ -3021,7 +3040,7 @@ async function deleteSession(id) {
   if (!confirm('Excluir este atendimento?')) return;
   const s = await dbGet('sessions', id);
   const athleteId = s.athleteId;
-  await dbDelete('sessions', id);
+  if (!(await dbDelete('sessions', id))) return;
   showToast('Atendimento excluído.');
   await openAthleteDetail(athleteId);
   renderDashboard();
@@ -3252,7 +3271,7 @@ async function savePhysio(){
   const btn = document.querySelector('#modal-physio .btn-primary');
   if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
   try {
-    await dbAdd('physios', { nome, tipo, crefito: crefito||null, ra: ra||null });
+    if ((await dbAdd('physios', { nome, tipo, crefito: crefito||null, ra: ra||null })) === null) return;
     closeModal('modal-physio');
     renderFisios();
     loadPhysiosSelect();
@@ -3263,7 +3282,7 @@ async function savePhysio(){
 
 async function deletePhysio(id){
   if(!confirm('Excluir fisioterapeuta?')) return;
-  await dbDelete('physios',id);
+  if (!(await dbDelete('physios',id))) return;
   renderFisios();
   loadPhysiosSelect();
 }
@@ -3617,7 +3636,7 @@ function acwrBadge(acwr) {
   return `<span class="mon-badge mon-vermelho">🔴 ${acwr.toFixed(2)}</span>`;
 }
 
-function hooперBadge(h, m) {
+function hooperBadge(h, m) {
   if (!h) return '—';
   const cl = h >= 18 ? 'mon-verde' : h > 11 ? 'mon-amarelo' : 'mon-vermelho';
 
@@ -3681,7 +3700,13 @@ document.addEventListener('click', e => {
 
 async function saveDuracao(monId, dur, pse) {
   const carga = pse && dur ? pse * dur : null;
-  await supa.from('monitoring').update({ pse_duracao: dur, pse_carga: carga }).eq('id', monId);
+  const { data: alteradas, error } = await supa.from('monitoring')
+    .update({ pse_duracao: dur, pse_carga: carga }).eq('id', monId).select('id');
+  if (error || !alteradas?.length) {
+    falhaGravacao(error || ERRO_SEM_LINHAS);
+    renderMonitoramento();   // volta o campo ao valor gravado
+    return;
+  }
   showToast('Duração salva!');
   renderMonitoramento();
 }
@@ -3746,7 +3771,7 @@ async function renderMonitoramento() {
         return `
           <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.5fr${currentRole==='admin'?' 0.5fr':''};gap:8px;padding:12px 16px;border-bottom:1px solid var(--cinza-borda);align-items:center;font-size:13px;">
             <div style="font-weight:600;">${a.apelido || a.nome}</div>
-            <div>${m?.hooper ? hooперBadge(m.hooper, m) : '<span style="color:var(--cinza-texto);">—</span>'}</div>
+            <div>${m?.hooper ? hooperBadge(m.hooper, m) : '<span style="color:var(--cinza-texto);">—</span>'}</div>
             <div>${urinaCor ? `<span class="urina-dot" style="background:${urinaCor};" title="${URINA_NOMES[m.hidratacao]}"></span>` : '—'}</div>
             <div>${m?.recuperacao ?? '—'}</div>
             <div>${doresHtml}</div>
@@ -3792,7 +3817,7 @@ async function renderMonitoramento() {
 
 async function deleteMonitoring(id) {
   if (!confirm('Excluir este registro de monitoramento?')) return;
-  await dbDelete('monitoring', id);
+  if (!(await dbDelete('monitoring', id))) return;
   showToast('Registro excluído.');
   renderMonitoramento();
 }
@@ -3974,7 +3999,7 @@ function mmSelectUrina(n) {
 }
 
 async function openManualMonModal() {
-  const athletes = await dbGetAll('athletes');
+  const athletes = await getAthletesByCat();
   const sel = document.getElementById('mm-atleta');
   sel.innerHTML = '<option value="">Selecione o atleta...</option>' +
     athletes.filter(a => a.status === 'ativo' || a.status === 'afastado')
@@ -4023,30 +4048,33 @@ async function saveManualMon() {
   const pse_carga = pse_intensidade && pse_duracao ? pse_intensidade * pse_duracao : null;
 
   try {
-    const { data: existing } = await supa.from('monitoring').select('id').eq('athleteId', athleteId).eq('data', data);
+    const { data: existing, error: errBusca } = await supa.from('monitoring').select('id').eq('athleteId', athleteId).eq('data', data);
+    if (errBusca) throw errBusca;
 
     if (existing && existing.length > 0) {
-      await supa.from('monitoring').update({
+      const { data: alteradas, error } = await supa.from('monitoring').update({
         sono, dor, fadiga, humor, estresse, hooper, recuperacao, hidratacao,
         pse_intensidade, pse_duracao: pse_duracao || null, pse_carga,
         preenchido_pre: true, preenchido_pos: !!pse_intensidade
-      }).eq('id', existing[0].id);
+      }).eq('id', existing[0].id).select('id');
+      if (error) throw error;
+      if (!alteradas?.length) throw ERRO_SEM_LINHAS;
     } else {
-      await supa.from('monitoring').insert({
+      const { error } = await supa.from('monitoring').insert({
         athleteId, data, sono, dor, fadiga, humor, estresse, hooper,
         recuperacao, hidratacao, pse_intensidade,
         pse_duracao: pse_duracao || null, pse_carga,
         preenchido_pre: true, preenchido_pos: !!pse_intensidade,
         createdAt: new Date().toISOString()
       });
+      if (error) throw error;
     }
 
     showToast('✅ Registro salvo com sucesso!');
     closeModal('modal-mon-manual');
     renderMonitoramento();
   } catch(e) {
-    console.error(e);
-    showToast('Erro ao salvar. Tente novamente.');
+    falhaGravacao(e);   // o modal fica aberto com os dados
   }
 }
 
@@ -4358,7 +4386,7 @@ window.saveAvaliacao = async function saveAvaliacao() {
       createdAt: new Date().toISOString()
     };
 
-    await dbAdd('functional_assessments', obj);
+    if ((await dbAdd('functional_assessments', obj)) === null) return;   // falhou: modal aberto
     showToast('✅ Avaliação salva com sucesso!');
     closeModal('modal-avaliacao');
     renderAvaliacao();
@@ -4372,7 +4400,7 @@ window.saveAvaliacao = async function saveAvaliacao() {
 
 async function deleteAvaliacao(id) {
   if (!confirm('Excluir esta avaliação?')) return;
-  await dbDelete('functional_assessments', id);
+  if (!(await dbDelete('functional_assessments', id))) return;
   showToast('Avaliação excluída.');
   renderAvaliacao();
 }
@@ -4443,7 +4471,7 @@ async function editAvaliacao(id) {
       const ybt_comp_d = (ybt_ant_d&&ybt_pm_d&&ybt_pl_d&&mmii_d) ? parseFloat(((ybt_ant_d+ybt_pm_d+ybt_pl_d)/(mmii_d*3)*100).toFixed(1)) : null;
       const ybt_comp_e = (ybt_ant_e&&ybt_pm_e&&ybt_pl_e&&mmii_e) ? parseFloat(((ybt_ant_e+ybt_pm_e+ybt_pl_e)/(mmii_e*3)*100).toFixed(1)) : null;
 
-      await supa.from('functional_assessments').update({
+      const { data: alteradas, error } = await supa.from('functional_assessments').update({
         data: document.getElementById('av-data').value,
         mmii_d, mmii_e,
         squeeze_d: g('av-squeeze-d'), squeeze_e: g('av-squeeze-e'),
@@ -4471,14 +4499,15 @@ async function editAvaliacao(id) {
         ybt_ant_e_best: ybt_ant_e, ybt_pm_e_best: ybt_pm_e, ybt_pl_e_best: ybt_pl_e, ybt_composto_e: ybt_comp_e,
         ybt_lsi: avLSI(ybt_comp_d,ybt_comp_e),
         observacoes: document.getElementById('av-obs')?.value.trim() || null
-      }).eq('id', id);
+      }).eq('id', id).select('id');
+      if (error) throw error;
+      if (!alteradas?.length) throw ERRO_SEM_LINHAS;
 
       showToast('✅ Avaliação atualizada!');
       closeModal('modal-avaliacao');
       renderAvaliacao();
     } catch(e) {
-      console.error(e);
-      showToast('Erro ao atualizar.');
+      falhaGravacao(e);   // a avaliação original continua como estava
     } finally {
       btn.disabled = false; btn.textContent = 'Atualizar Avaliação';
     }
@@ -4616,7 +4645,7 @@ async function nutPreencherDados() {
 function nutCalc() {
   const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
   const formula = document.getElementById('nut-formula')?.value || 'JP7';
-  const equacao = document.getElementById('nut-equacao')?.value || 'siri';
+  const equacao = document.getElementById('nut-equacao')?.value || 'brozek';
   // Usa peso do campo editável do formulário
   const peso = parseFloat(document.getElementById('nut-peso-atual')?.value) || (nutAtletaCache ? parseFloat(nutAtletaCache.peso) : null);
   const a = nutAtletaCache;
@@ -4625,7 +4654,7 @@ function nutCalc() {
   const peit = g('nut-peitoral'), axil = g('nut-axilar'), tric = g('nut-triceps');
   const sube = g('nut-subescapular'), supr = g('nut-suprailiaca');
   const abdo = g('nut-abdominal'), coxa = g('nut-coxa-dc');
-  const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 10;
+  const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 12;
 
   let soma = null, densidade = null, pgordura = null;
 
@@ -4764,7 +4793,7 @@ async function nutSalvar(editId) {
     const idade = a?.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) : null;
     const formula = document.getElementById('nut-formula').value;
     const equacao = document.getElementById('nut-equacao').value;
-    const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 10;
+    const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 12;
     // Peso do campo editável do formulário (pode ser diferente do cadastro)
     const peso = parseFloat(document.getElementById('nut-peso-atual')?.value) || (a ? parseFloat(a.peso) : null);
 
@@ -4847,7 +4876,8 @@ async function nutSalvar(editId) {
               peso: String(pesoNovo),
               imc: parseFloat(a.altura) > 0 ? (pesoNovo / (parseFloat(a.altura) ** 2)).toFixed(1) : nutAtletaCache.imc,
               updatedAt: new Date().toISOString()
-            }).eq('id', athleteId).then(() => {
+            }).eq('id', athleteId).select('id').then(({ data: alteradas, error }) => {
+              if (error || !alteradas?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return; }
               showToast(`✅ Peso atualizado para ${pesoNovo} kg no cadastro!`);
             });
           }
@@ -4870,7 +4900,8 @@ window.saveNutricional = function() { return nutSalvar(null); };
 
 window.deleteNutricional = async function(id) {
   if (!confirm('Excluir esta avaliação?')) return;
-  await supa.from('nutritional_assessments').delete().eq('id', id);
+  const { data: apagadas, error } = await supa.from('nutritional_assessments').delete().eq('id', id).select('id');
+  if (error || !apagadas?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return; }
   showToast('Avaliação excluída.');
   renderNutricional();
 };
@@ -4888,8 +4919,8 @@ window.editNutricional = async function(id) {
   s('nut-data', r.data);
   s('nut-peso-atual', r.peso);
   s('nut-formula', r.formula||'JP7');
-  s('nut-equacao', r.equacao||'siri');
-  s('nut-pgordura-ideal', r.percentual_gordura_ideal||10);
+  s('nut-equacao', r.equacao||'brozek');
+  s('nut-pgordura-ideal', r.percentual_gordura_ideal||12);
   s('nut-peitoral', r.dc_peitoral); s('nut-axilar', r.dc_axilar_media);
   s('nut-triceps', r.dc_triceps); s('nut-subescapular', r.dc_subescapular);
   s('nut-suprailiaca', r.dc_suprailiaca); s('nut-abdominal', r.dc_abdominal);
@@ -5462,7 +5493,7 @@ window.exportAthletePDF = async function(athleteId) {
   const nascimento = a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : '—';
   const idade = a.nasc ? Math.floor((new Date() - new Date(a.nasc)) / (365.25*24*3600*1000)) + ' anos' : '—';
 
-  const hooперLabel = h => h >= 18 ? '🟢 Alta prontidão' : h >= 11 ? '🟡 Moderada' : '🔴 Baixa prontidão';
+  const hooperLabel = h => h >= 18 ? '🟢 Alta prontidão' : h >= 11 ? '🟡 Moderada' : '🔴 Baixa prontidão';
   const acwrColor = v => v >= 0.8 && v <= 1.3 ? '#00c853' : v > 1.3 && v <= 1.5 ? '#ffab00' : '#e0282e';
 
   const sessionsHTML = sessions.length === 0
