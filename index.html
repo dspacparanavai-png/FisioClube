@@ -4633,13 +4633,20 @@ window.openNutricionalModal = async function(id) {
   openModal('modal-nutricional');
 };
 
-window.saveNutricional = async function() {
+// Grava a avaliação nutricional.
+// editId = null  -> insere uma avaliação nova.
+// editId = número -> atualiza a avaliação existente no lugar (update direto, sem excluir antes).
+// Se o Supabase recusar, o erro é tratado e o modal continua aberto: nada é perdido.
+async function nutSalvar(editId) {
+  const editando = editId !== null && editId !== undefined;
+  const rotulo = editando ? 'Atualizar Avaliação' : 'Salvar Avaliação';
+
   const athleteId = parseInt(document.getElementById('nut-atleta').value);
   const data = document.getElementById('nut-data').value;
   if (!athleteId || !data) { showToast('Selecione atleta e data!'); return; }
 
   const btn = document.getElementById('nut-btn-save');
-  btn.disabled = true; btn.textContent = 'Salvando...';
+  btn.disabled = true; btn.textContent = editando ? 'Atualizando...' : 'Salvando...';
 
   try {
     const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
@@ -4679,7 +4686,7 @@ window.saveNutricional = async function() {
     const cin=g('nut-cintura'), qua=g('nut-quadril');
     const rcq = cin&&qua ? parseFloat((cin/qua).toFixed(3)) : null;
 
-    await supa.from('nutritional_assessments').insert({
+    const registro = {
       athleteId, data, formula, equacao,
       peso: peso||null, altura: a?.altura?parseFloat(a.altura):null, idade, posicao: a?.posicao||null,
       dc_peitoral:peit, dc_axilar_media:axil, dc_triceps:tric,
@@ -4700,11 +4707,22 @@ window.saveNutricional = async function() {
         const ac = nutAtletaCache?.altura ? (parseFloat(nutAtletaCache.altura)>3?parseFloat(nutAtletaCache.altura):parseFloat(nutAtletaCache.altura)*100) : null;
         return (ac&&u&&p&&f) ? parseFloat((3.02*(ac**2*u*f*0.1)**0.712).toFixed(2)) : null;
       })(),
-      observacoes:document.getElementById('nut-obs').value.trim()||null,
-      createdAt: new Date().toISOString()
-    });
+      observacoes:document.getElementById('nut-obs').value.trim()||null
+    };
 
-    showToast('✅ Avaliação nutricional salva!');
+    if (editando) {
+      // Atualiza no lugar; createdAt original é preservado.
+      const { data: alteradas, error } = await supa.from('nutritional_assessments')
+        .update(registro).eq('id', editId).select('id');
+      if (error) throw error;
+      if (!alteradas || alteradas.length === 0) throw new Error('Nenhuma avaliação foi atualizada (registro não encontrado ou sem permissão).');
+    } else {
+      const { error } = await supa.from('nutritional_assessments')
+        .insert({ ...registro, createdAt: new Date().toISOString() });
+      if (error) throw error;
+    }
+
+    showToast(editando ? '✅ Avaliação nutricional atualizada!' : '✅ Avaliação nutricional salva!');
     closeModal('modal-nutricional');
     renderNutricional();
 
@@ -4728,11 +4746,17 @@ window.saveNutricional = async function() {
     }
   } catch(e) {
     console.error(e);
-    showToast('Erro ao salvar. Tente novamente.');
+    showToast(editando
+      ? 'Erro ao atualizar. A avaliação original não foi alterada.'
+      : 'Erro ao salvar. Tente novamente.');
   } finally {
-    btn.disabled=false; btn.textContent='Salvar Avaliação';
+    btn.disabled=false; btn.textContent=rotulo;
   }
-};
+}
+
+// Chamado pelo botão (onclick="saveNutricional()" e btn.onclick = saveNutricional).
+// O wrapper descarta o evento de clique, que não pode virar editId.
+window.saveNutricional = function() { return nutSalvar(null); };
 
 window.deleteNutricional = async function(id) {
   if (!confirm('Excluir esta avaliação?')) return;
@@ -4777,15 +4801,8 @@ window.editNutricional = async function(id) {
 };
 
 async function saveNutricionalUpdate(id) {
-  // Re-run save logic but with update
-  const btn = document.getElementById('nut-btn-save');
-  btn.disabled=true; btn.textContent='Atualizando...';
-  try {
-    await supa.from('nutritional_assessments').delete().eq('id', id);
-    await saveNutricional();
-  } finally {
-    btn.disabled=false; btn.textContent='Atualizar Avaliação';
-  }
+  // Update direto (antes: excluía e inseria de novo; se a inserção falhasse, a avaliação se perdia)
+  await nutSalvar(id);
 }
 
 window.exportNutricionalPDF = async function(id) {
