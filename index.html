@@ -1556,7 +1556,6 @@ body.dark-mode #topbar {
       <div class="form-group">
         <label>Evolução / Procedimentos Realizados</label>
         <textarea class="form-control" id="a-evolucao" placeholder="Descreva os procedimentos realizados e a evolução do atleta, resposta ao tratamento, queixas, escala de dor (0-10)..." style="min-height:160px;"></textarea>
-        <input type="hidden" id="a-procedimentos" value="">
       </div>
     </div>
 
@@ -1600,7 +1599,6 @@ body.dark-mode #topbar {
       <div class="form-group">
         <label>Evolução / Procedimentos Realizados</label>
         <textarea class="form-control" id="es-evolucao" style="min-height:160px;"></textarea>
-        <input type="hidden" id="es-procedimentos" value="">
       </div>
     </div>
     <div class="modal-actions">
@@ -2069,6 +2067,14 @@ function hojeLocal() {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// Texto de campo numérico → número ou null (aceita vírgula; vazio/ inválido = null).
+function numOuNull(v) {
+  const t = String(v ?? '').trim().replace(',', '.');
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
 }
 
 function sbStatus(state, msg) {
@@ -2727,7 +2733,7 @@ async function openAthleteDetail(id) {
                   <div class="session-field-value">${escapeHtml(s.evolucao)}</div>
                 </div>` : ''}
               <div class="session-actions">
-                <button class="btn btn-ghost btn-sm" onclick="openEditSession(${s.id}, '${s.data}', \`${escapeForAttr(s.procedimentos)}\`, \`${escapeForAttr(s.evolucao)}\`)">✏️ Editar</button>
+                <button class="btn btn-ghost btn-sm" onclick="openEditSession(${s.id}, '${s.data}', \`${escapeForAttr(s.evolucao)}\`)">✏️ Editar</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteSession(${s.id})">🗑️</button>
               </div>
             </div>
@@ -2834,7 +2840,6 @@ async function renderHistorico() {
             <span class="badge badge-${athlete.status}">${statusLabel(athlete.status)}</span>
             ${session.createdAt ? `<span style="font-size:11px;color:var(--cinza-texto);margin-left:auto;">🕐 ${new Date(session.createdAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>` : ''}
           </div>
-          ${session.procedimentos ? `<div class="session-field"><div class="session-field-label">Procedimentos</div><div class="session-field-value">${escapeHtml(session.procedimentos)}</div></div>` : ''}
           ${session.evolucao ? `<div class="session-field"><div class="session-field-label">Evolução</div><div class="session-field-value">${escapeHtml(session.evolucao)}</div></div>` : ''}
         </div>
       `).join('')}
@@ -2917,9 +2922,9 @@ async function saveAthlete() {
     diagnostico: document.getElementById('f-diagnostico').value.trim(),
     obs: document.getElementById('f-obs').value.trim(),
     foto: fotoUrl,
-    peso: document.getElementById('f-peso')?.value,
-    altura: document.getElementById('f-altura')?.value,
-    imc: document.getElementById('f-imc')?.value,
+    peso: numOuNull(document.getElementById('f-peso')?.value),
+    altura: numOuNull(document.getElementById('f-altura')?.value),
+    imc: numOuNull(document.getElementById('f-imc')?.value),
     categoria: document.getElementById('f-categoria')?.value || currentCategoria,
     updatedAt: new Date().toISOString()
   };
@@ -2962,7 +2967,6 @@ async function deleteAthlete(id) {
 function openSessionModal(athleteId) {
   currentAthleteId = athleteId;
   document.getElementById('a-data').value = hojeLocal();
-  document.getElementById('a-procedimentos').value = '';
   document.getElementById('a-evolucao').value = '';
   document.getElementById('a-status').value = '';
   openModal('modal-atendimento');
@@ -2970,11 +2974,10 @@ function openSessionModal(athleteId) {
 
 async function saveSession() {
   const data = document.getElementById('a-data').value;
-  const procedimentos = document.getElementById('a-procedimentos').value.trim();
   const evolucao = document.getElementById('a-evolucao').value.trim();
 
   if (!data) { showToast('Selecione a data!'); return; }
-  if (!procedimentos && !evolucao) { showToast('Preencha ao menos um campo!'); return; }
+  if (!evolucao) { showToast('Preencha a evolução!'); return; }
 
   const saveBtn = document.querySelector('#modal-atendimento .btn-primary');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
@@ -2990,7 +2993,7 @@ async function saveSession() {
     const novoId = await dbAdd('sessions', {
       physioId, physioNome,
       athleteId: currentAthleteId,
-      data, procedimentos, evolucao,
+      data, evolucao,
       createdAt: new Date().toISOString()
     });
     if (novoId === null) return;   // falhou: o modal fica aberto
@@ -3015,11 +3018,10 @@ async function saveSession() {
   }
 }
 
-function openEditSession(id, data, procedimentos, evolucao) {
+function openEditSession(id, data, evolucao) {
   editingSessionId = id;
   document.getElementById('es-id').value = id;
   document.getElementById('es-data').value = data;
-  document.getElementById('es-procedimentos').value = procedimentos;
   document.getElementById('es-evolucao').value = evolucao;
   openModal('modal-edit-sessao');
 }
@@ -3028,7 +3030,6 @@ async function updateSession() {
   const id = editingSessionId;
   const s = await dbGet('sessions', id);
   s.data = document.getElementById('es-data').value;
-  s.procedimentos = document.getElementById('es-procedimentos').value.trim();
   s.evolucao = document.getElementById('es-evolucao').value.trim();
   if (!(await dbPut('sessions', s))) return;
   closeModal('modal-edit-sessao');
@@ -4370,7 +4371,7 @@ window.saveAvaliacao = async function saveAvaliacao() {
       isquio_d: g('av-isquio-d'), isquio_e: g('av-isquio-e'),
       thomas_reto_d: g('av-thomas-reto-d'), thomas_reto_e: g('av-thomas-reto-e'),
       thomas_iliopsoas_d: g('av-thomas-ilio-d'), thomas_iliopsoas_e: g('av-thomas-ilio-e'),
-      nordic_d: g('av-nordic-d'), nordic_e: g('av-nordic-e'),
+      nordic_d: g('av-nordic-d'),
       ybt_ant_d_best: ybt_ant_d, ybt_pm_d_best: ybt_pm_d, ybt_pl_d_best: ybt_pl_d,
       ybt_ant_d1: g('av-ybt-ant-d1'), ybt_ant_d2: g('av-ybt-ant-d2'), ybt_ant_d3: g('av-ybt-ant-d3'),
       ybt_pm_d1: g('av-ybt-pm-d1'), ybt_pm_d2: g('av-ybt-pm-d2'), ybt_pm_d3: g('av-ybt-pm-d3'),
@@ -4441,7 +4442,7 @@ async function editAvaliacao(id) {
   s('av-isquio-d', r.isquio_d); s('av-isquio-e', r.isquio_e);
   s('av-thomas-reto-d', r.thomas_reto_d); s('av-thomas-reto-e', r.thomas_reto_e);
   s('av-thomas-ilio-d', r.thomas_iliopsoas_d); s('av-thomas-ilio-e', r.thomas_iliopsoas_e);
-  s('av-nordic-d', r.nordic_d); s('av-nordic-e', r.nordic_e);
+  s('av-nordic-d', r.nordic_d);
   s('av-ybt-ant-d1', r.ybt_ant_d1); s('av-ybt-ant-d2', r.ybt_ant_d2); s('av-ybt-ant-d3', r.ybt_ant_d3);
   s('av-ybt-pm-d1', r.ybt_pm_d1); s('av-ybt-pm-d2', r.ybt_pm_d2); s('av-ybt-pm-d3', r.ybt_pm_d3);
   s('av-ybt-pl-d1', r.ybt_pl_d1); s('av-ybt-pl-d2', r.ybt_pl_d2); s('av-ybt-pl-d3', r.ybt_pl_d3);
@@ -4488,7 +4489,7 @@ async function editAvaliacao(id) {
         isquio_d: g('av-isquio-d'), isquio_e: g('av-isquio-e'),
         thomas_reto_d: g('av-thomas-reto-d'), thomas_reto_e: g('av-thomas-reto-e'),
         thomas_iliopsoas_d: g('av-thomas-ilio-d'), thomas_iliopsoas_e: g('av-thomas-ilio-e'),
-        nordic_d: g('av-nordic-d'), nordic_e: g('av-nordic-e'),
+        nordic_d: g('av-nordic-d'),
         ybt_ant_d1: g('av-ybt-ant-d1'), ybt_ant_d2: g('av-ybt-ant-d2'), ybt_ant_d3: g('av-ybt-ant-d3'),
         ybt_pm_d1: g('av-ybt-pm-d1'), ybt_pm_d2: g('av-ybt-pm-d2'), ybt_pm_d3: g('av-ybt-pm-d3'),
         ybt_pl_d1: g('av-ybt-pl-d1'), ybt_pl_d2: g('av-ybt-pl-d2'), ybt_pl_d3: g('av-ybt-pl-d3'),
@@ -4873,8 +4874,8 @@ async function nutSalvar(editId) {
         setTimeout(() => {
           if (confirm(`O peso registrado nesta avaliação (${pesoNovo} kg) é diferente do cadastro atual (${pesoAtual} kg).\n\nDeseja atualizar o peso no cadastro do atleta?`)) {
             supa.from('athletes').update({
-              peso: String(pesoNovo),
-              imc: parseFloat(a.altura) > 0 ? (pesoNovo / (parseFloat(a.altura) ** 2)).toFixed(1) : nutAtletaCache.imc,
+              peso: pesoNovo,
+              imc: parseFloat(a.altura) > 0 ? numOuNull((pesoNovo / (parseFloat(a.altura) ** 2)).toFixed(1)) : numOuNull(nutAtletaCache.imc),
               updatedAt: new Date().toISOString()
             }).eq('id', athleteId).select('id').then(({ data: alteradas, error }) => {
               if (error || !alteradas?.length) { falhaGravacao(error || ERRO_SEM_LINHAS); return; }
