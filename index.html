@@ -2113,8 +2113,31 @@ function sbStatus(state, msg) {
 }
 
 // -- DB HELPERS (Supabase) -----------------------------------------
+// O Supabase devolve no máximo 1000 linhas por consulta e NÃO avisa quando
+// corta. buscarTudo pagina com range() até vir uma página incompleta.
+// montar() deve criar a consulta com ordem determinística (ex.: .order('id')).
+const TAM_PAGINA = 1000;
+async function buscarTudo(montar) {
+  const linhas = [];
+  for (let de = 0; ; de += TAM_PAGINA) {
+    const { data, error } = await montar().range(de, de + TAM_PAGINA - 1);
+    if (error) return { data: null, error };
+    linhas.push(...(data || []));
+    if (!data || data.length < TAM_PAGINA) return { data: linhas, error: null };
+  }
+}
+
 async function dbGetAll(table) {
-  const { data, error } = await supa.from(table).select('*').order('id');
+  const { data, error } = await buscarTudo(() => supa.from(table).select('*').order('id'));
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+
+// Linhas de uma tabela só dos atletas indicados (paginado).
+async function dbGetByAtletas(table, ids) {
+  if (!ids.length) return [];
+  const { data, error } = await buscarTudo(() =>
+    supa.from(table).select('*').in('athleteId', ids).order('id'));
   if (error) { console.error(error); return []; }
   return data || [];
 }
@@ -2126,8 +2149,8 @@ async function dbGet(table, id) {
 }
 
 async function dbGetByIndex(table, col, value) {
-  const { data, error } = await supa.from(table).select('*').eq(col, value);
-  if (error) return [];
+  const { data, error } = await buscarTudo(() => supa.from(table).select('*').eq(col, value).order('id'));
+  if (error) { console.error(error); return []; }
   return data || [];
 }
 
@@ -2201,18 +2224,15 @@ async function getAthletesByCat(incluirArquivados = false) {
     && (incluirArquivados || a.status !== 'arquivado'));
 }
 
+// Filtro por atleta feito no banco: só vêm as linhas da categoria.
 async function getSessionsByCat() {
   const athletes = await getAthletesByCat(true);
-  const ids = new Set(athletes.map(a => a.id));
-  const all = await dbGetAll('sessions');
-  return all.filter(s => ids.has(s.athleteId));
+  return dbGetByAtletas('sessions', athletes.map(a => a.id));
 }
 
 async function getMonitoringByCat() {
   const athletes = await getAthletesByCat(true);
-  const ids = new Set(athletes.map(a => a.id));
-  const all = await dbGetAll('monitoring');
-  return all.filter(m => ids.has(m.athleteId));
+  return dbGetByAtletas('monitoring', athletes.map(a => a.id));
 }
 let currentUser = null;
 let currentRole = null;
@@ -3380,6 +3400,11 @@ function formatDate(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
+// Campo preenchido? 0 conta como valor; só null/undefined/'' são vazios.
+function tem(v) { return v !== null && v !== undefined && v !== ''; }
+// Valor para exibir, ou '—' se vazio (0 aparece como 0).
+function vz(v) { return tem(v) ? v : '—'; }
+
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -3758,9 +3783,10 @@ const JANELA_RETORNO = 28;   // dias de alerta depois do retorno
 let afastamentosOk = true;   // false se a tabela não existir/não puder ser lida
 
 async function carregarAfastamentos(athleteId) {
-  let q = supa.from('afastamentos').select('*').order('inicio', { ascending: true });
-  if (athleteId) q = q.eq('athleteId', athleteId);
-  const { data, error } = await q;
+  const { data, error } = await buscarTudo(() => {
+    const q = supa.from('afastamentos').select('*').order('inicio', { ascending: true }).order('id');
+    return athleteId ? q.eq('athleteId', athleteId) : q;
+  });
   if (error) { console.error(error); afastamentosOk = false; return null; }
   afastamentosOk = true;
   return data || [];
@@ -4584,8 +4610,7 @@ function avCalcYBT(side) {
   const dirs = ['ant','pm','pl'];
   const bests = {};
   dirs.forEach(dir => {
-    const vals = Array.from({length:3}, (_,i) => parseFloat(document.getElementById(`av-ybt-${dir}-${side}${i+1}`)?.value) || null).filter(v=>v!==null);
-    bests[dir] = vals.length ? Math.max(...vals) : null;
+    bests[dir] = avGetBestYBT(dir, side);
   });
 
   const mmii = (() => { const v = document.getElementById(`av-mmii-${side}`)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; })();
@@ -4681,13 +4706,59 @@ function avGetBest(prefix, side, mode, n=3) {
 }
 
 function avGetBestYBT(dir, side) {
-  const vals = Array.from({length:3}, (_,i) => parseFloat(document.getElementById(`av-ybt-${dir}-${side}${i+1}`)?.value) || null).filter(v=>v!==null);
+  const vals = [1,2,3].map(i => numOuNull(document.getElementById(`av-ybt-${dir}-${side}${i}`)?.value)).filter(v => v !== null);
   return vals.length ? Math.max(...vals) : null;
 }
 
 function avLSI(d, e) {
   if (!d || !e) return null;
   return parseFloat((Math.min(d,e)/Math.max(d,e)*100).toFixed(1));
+}
+
+// Lê todos os campos de teste do formulário, com melhores tentativas, LSI e
+// Y-Balance composto. Usada por saveAvaliacao (nova) e editAvaliacao (update),
+// para os dois caminhos gravarem sempre o mesmo conjunto de colunas.
+function avColetarCampos() {
+  const g = id => numOuNull(document.getElementById(id)?.value);
+
+  const sh_d = avGetBest('sh','d','min'), sh_e = avGetBest('sh','e','min');       // menor tempo = melhor
+  const slh_d = avGetBest('slh','d','max'), slh_e = avGetBest('slh','e','max');   // maior distância = melhor
+  const grip_d = avGetBest('grip','d','max'), grip_e = avGetBest('grip','e','max');
+  const mmii_d = g('av-mmii-d'), mmii_e = g('av-mmii-e');
+  const ybt = {};
+  ['ant','pm','pl'].forEach(dir => ['d','e'].forEach(s => { ybt[`${dir}_${s}`] = avGetBestYBT(dir, s); }));
+  const composto = s => {
+    const ant = ybt[`ant_${s}`], pm = ybt[`pm_${s}`], pl = ybt[`pl_${s}`];
+    const mmii = s === 'd' ? mmii_d : mmii_e;
+    return (ant !== null && pm !== null && pl !== null && mmii)
+      ? parseFloat(((ant + pm + pl) / (mmii * 3) * 100).toFixed(1)) : null;
+  };
+  const ybt_comp_d = composto('d'), ybt_comp_e = composto('e');
+
+  const campos = {
+    mmii_d, mmii_e,
+    squeeze_d: g('av-squeeze-d'), squeeze_e: g('av-squeeze-e'),
+    lunge_d: g('av-lunge-d'), lunge_e: g('av-lunge-e'),
+    side_hop_d_best: sh_d, side_hop_e_best: sh_e, side_hop_lsi: avLSI(sh_d, sh_e),
+    slh_d_best: slh_d, slh_e_best: slh_e, slh_lsi: avLSI(slh_d, slh_e),
+    grip_d_best: grip_d, grip_e_best: grip_e, grip_lsi: avLSI(grip_d, grip_e),
+    isquio_d: g('av-isquio-d'), isquio_e: g('av-isquio-e'),
+    thomas_iliopsoas_d: g('av-thomas-ilio-d'), thomas_reto_d: g('av-thomas-reto-d'),
+    thomas_iliopsoas_e: g('av-thomas-ilio-e'), thomas_reto_e: g('av-thomas-reto-e'),
+    nordic_d: g('av-nordic-d'),
+    ybt_composto_d: ybt_comp_d, ybt_composto_e: ybt_comp_e,
+    ybt_lsi: avLSI(ybt_comp_d, ybt_comp_e),
+    observacoes: document.getElementById('av-obs')?.value.trim() || null
+  };
+  // Tentativas 1-3 de cada lado (Side Hop, SLH, Preensão)
+  [['side_hop','sh'], ['slh','slh'], ['grip','grip']].forEach(([col, campo]) =>
+    ['d','e'].forEach(s => [1,2,3].forEach(i => { campos[`${col}_${s}${i}`] = g(`av-${campo}-${s}${i}`); })));
+  // Y-Balance: tentativas e melhor de cada direção
+  ['ant','pm','pl'].forEach(dir => ['d','e'].forEach(s => {
+    [1,2,3].forEach(i => { campos[`ybt_${dir}_${s}${i}`] = g(`av-ybt-${dir}-${s}${i}`); });
+    campos[`ybt_${dir}_${s}_best`] = ybt[`${dir}_${s}`];
+  }));
+  return campos;
 }
 
 window.saveAvaliacao = async function saveAvaliacao() {
@@ -4700,64 +4771,13 @@ window.saveAvaliacao = async function saveAvaliacao() {
 
   try {
     const a = await dbGet('athletes', athleteId);
-    const idade = idadeNaData(a?.nasc, data);   // idade na data da avaliação
-
-    const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
-
-    // Side hop (min=best)
-    const sh_d = avGetBest('sh','d','min');
-    const sh_e = avGetBest('sh','e','min');
-    // SLH (max=best)
-    const slh_d = avGetBest('slh','d','max');
-    const slh_e = avGetBest('slh','e','max');
-    // Grip (max=best)
-    const grip_d = avGetBest('grip','d','max');
-    const grip_e = avGetBest('grip','e','max');
-    // YBT
-    const mmii_d = g('av-mmii-d');
-    const mmii_e = g('av-mmii-e');
-    const ybt_ant_d = avGetBestYBT('ant','d');
-    const ybt_pm_d  = avGetBestYBT('pm','d');
-    const ybt_pl_d  = avGetBestYBT('pl','d');
-    const ybt_ant_e = avGetBestYBT('ant','e');
-    const ybt_pm_e  = avGetBestYBT('pm','e');
-    const ybt_pl_e  = avGetBestYBT('pl','e');
-    const ybt_comp_d = (ybt_ant_d && ybt_pm_d && ybt_pl_d && mmii_d) ? parseFloat(((ybt_ant_d+ybt_pm_d+ybt_pl_d)/(mmii_d*3)*100).toFixed(1)) : null;
-    const ybt_comp_e = (ybt_ant_e && ybt_pm_e && ybt_pl_e && mmii_e) ? parseFloat(((ybt_ant_e+ybt_pm_e+ybt_pl_e)/(mmii_e*3)*100).toFixed(1)) : null;
-
     const obj = {
       athleteId, data,
-      peso: a?.peso ? parseFloat(a.peso) : null,
-      altura: a?.altura ? parseFloat(a.altura) : null,
-      idade, posicao: a?.posicao || null,
-      mmii_d, mmii_e,
-      squeeze_d: g('av-squeeze-d'), squeeze_e: g('av-squeeze-e'),
-      lunge_d: g('av-lunge-d'), lunge_e: g('av-lunge-e'),
-      side_hop_d1: g('av-sh-d1'), side_hop_d2: g('av-sh-d2'), side_hop_d3: g('av-sh-d3'), side_hop_d_best: sh_d,
-      side_hop_e1: g('av-sh-e1'), side_hop_e2: g('av-sh-e2'), side_hop_e3: g('av-sh-e3'), side_hop_e_best: sh_e,
-      side_hop_lsi: avLSI(sh_d, sh_e),
-      slh_d1: g('av-slh-d1'), slh_d2: g('av-slh-d2'), slh_d3: g('av-slh-d3'), slh_d_best: slh_d,
-      slh_e1: g('av-slh-e1'), slh_e2: g('av-slh-e2'), slh_e3: g('av-slh-e3'), slh_e_best: slh_e,
-      slh_lsi: avLSI(slh_d, slh_e),
-      grip_d1: g('av-grip-d1'), grip_d2: g('av-grip-d2'), grip_d3: g('av-grip-d3'), grip_d_best: grip_d,
-      grip_e1: g('av-grip-e1'), grip_e2: g('av-grip-e2'), grip_e3: g('av-grip-e3'), grip_e_best: grip_e,
-      grip_lsi: avLSI(grip_d, grip_e),
-      isquio_d: g('av-isquio-d'), isquio_e: g('av-isquio-e'),
-      thomas_reto_d: g('av-thomas-reto-d'), thomas_reto_e: g('av-thomas-reto-e'),
-      thomas_iliopsoas_d: g('av-thomas-ilio-d'), thomas_iliopsoas_e: g('av-thomas-ilio-e'),
-      nordic_d: g('av-nordic-d'),
-      ybt_ant_d_best: ybt_ant_d, ybt_pm_d_best: ybt_pm_d, ybt_pl_d_best: ybt_pl_d,
-      ybt_ant_d1: g('av-ybt-ant-d1'), ybt_ant_d2: g('av-ybt-ant-d2'), ybt_ant_d3: g('av-ybt-ant-d3'),
-      ybt_pm_d1: g('av-ybt-pm-d1'), ybt_pm_d2: g('av-ybt-pm-d2'), ybt_pm_d3: g('av-ybt-pm-d3'),
-      ybt_pl_d1: g('av-ybt-pl-d1'), ybt_pl_d2: g('av-ybt-pl-d2'), ybt_pl_d3: g('av-ybt-pl-d3'),
-      ybt_composto_d: ybt_comp_d,
-      ybt_ant_e_best: ybt_ant_e, ybt_pm_e_best: ybt_pm_e, ybt_pl_e_best: ybt_pl_e,
-      ybt_ant_e1: g('av-ybt-ant-e1'), ybt_ant_e2: g('av-ybt-ant-e2'), ybt_ant_e3: g('av-ybt-ant-e3'),
-      ybt_pm_e1: g('av-ybt-pm-e1'), ybt_pm_e2: g('av-ybt-pm-e2'), ybt_pm_e3: g('av-ybt-pm-e3'),
-      ybt_pl_e1: g('av-ybt-pl-e1'), ybt_pl_e2: g('av-ybt-pl-e2'), ybt_pl_e3: g('av-ybt-pl-e3'),
-      ybt_composto_e: ybt_comp_e,
-      ybt_lsi: avLSI(ybt_comp_d, ybt_comp_e),
-      observacoes: document.getElementById('av-obs')?.value.trim() || null,
+      peso: numOuNull(a?.peso),
+      altura: numOuNull(a?.altura),
+      idade: idadeNaData(a?.nasc, data),   // idade na data da avaliação
+      posicao: a?.posicao || null,
+      ...avColetarCampos(),
       createdAt: new Date().toISOString()
     };
 
@@ -4838,44 +4858,10 @@ async function editAvaliacao(id) {
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = 'Atualizando...';
     try {
-      const g = fid => { const v = document.getElementById(fid)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
-      const sh_d = avGetBest('sh','d','min'), sh_e = avGetBest('sh','e','min');
-      const slh_d = avGetBest('slh','d','max'), slh_e = avGetBest('slh','e','max');
-      const grip_d = avGetBest('grip','d','max'), grip_e = avGetBest('grip','e','max');
-      const mmii_d = g('av-mmii-d'), mmii_e = g('av-mmii-e');
-      const ybt_ant_d = avGetBestYBT('ant','d'), ybt_pm_d = avGetBestYBT('pm','d'), ybt_pl_d = avGetBestYBT('pl','d');
-      const ybt_ant_e = avGetBestYBT('ant','e'), ybt_pm_e = avGetBestYBT('pm','e'), ybt_pl_e = avGetBestYBT('pl','e');
-      const ybt_comp_d = (ybt_ant_d&&ybt_pm_d&&ybt_pl_d&&mmii_d) ? parseFloat(((ybt_ant_d+ybt_pm_d+ybt_pl_d)/(mmii_d*3)*100).toFixed(1)) : null;
-      const ybt_comp_e = (ybt_ant_e&&ybt_pm_e&&ybt_pl_e&&mmii_e) ? parseFloat(((ybt_ant_e+ybt_pm_e+ybt_pl_e)/(mmii_e*3)*100).toFixed(1)) : null;
-
+      // Mesmos campos da avaliação nova (avColetarCampos); idade e createdAt não mudam.
       const { data: alteradas, error } = await supa.from('functional_assessments').update({
         data: document.getElementById('av-data').value,
-        mmii_d, mmii_e,
-        squeeze_d: g('av-squeeze-d'), squeeze_e: g('av-squeeze-e'),
-        lunge_d: g('av-lunge-d'), lunge_e: g('av-lunge-e'),
-        side_hop_d1: g('av-sh-d1'), side_hop_d2: g('av-sh-d2'), side_hop_d3: g('av-sh-d3'), side_hop_d_best: sh_d,
-        side_hop_e1: g('av-sh-e1'), side_hop_e2: g('av-sh-e2'), side_hop_e3: g('av-sh-e3'), side_hop_e_best: sh_e,
-        side_hop_lsi: avLSI(sh_d,sh_e),
-        slh_d1: g('av-slh-d1'), slh_d2: g('av-slh-d2'), slh_d3: g('av-slh-d3'), slh_d_best: slh_d,
-        slh_e1: g('av-slh-e1'), slh_e2: g('av-slh-e2'), slh_e3: g('av-slh-e3'), slh_e_best: slh_e,
-        slh_lsi: avLSI(slh_d,slh_e),
-        grip_d1: g('av-grip-d1'), grip_d2: g('av-grip-d2'), grip_d3: g('av-grip-d3'), grip_d_best: grip_d,
-        grip_e1: g('av-grip-e1'), grip_e2: g('av-grip-e2'), grip_e3: g('av-grip-e3'), grip_e_best: grip_e,
-        grip_lsi: avLSI(grip_d,grip_e),
-        isquio_d: g('av-isquio-d'), isquio_e: g('av-isquio-e'),
-        thomas_reto_d: g('av-thomas-reto-d'), thomas_reto_e: g('av-thomas-reto-e'),
-        thomas_iliopsoas_d: g('av-thomas-ilio-d'), thomas_iliopsoas_e: g('av-thomas-ilio-e'),
-        nordic_d: g('av-nordic-d'),
-        ybt_ant_d1: g('av-ybt-ant-d1'), ybt_ant_d2: g('av-ybt-ant-d2'), ybt_ant_d3: g('av-ybt-ant-d3'),
-        ybt_pm_d1: g('av-ybt-pm-d1'), ybt_pm_d2: g('av-ybt-pm-d2'), ybt_pm_d3: g('av-ybt-pm-d3'),
-        ybt_pl_d1: g('av-ybt-pl-d1'), ybt_pl_d2: g('av-ybt-pl-d2'), ybt_pl_d3: g('av-ybt-pl-d3'),
-        ybt_ant_d_best: ybt_ant_d, ybt_pm_d_best: ybt_pm_d, ybt_pl_d_best: ybt_pl_d, ybt_composto_d: ybt_comp_d,
-        ybt_ant_e1: g('av-ybt-ant-e1'), ybt_ant_e2: g('av-ybt-ant-e2'), ybt_ant_e3: g('av-ybt-ant-e3'),
-        ybt_pm_e1: g('av-ybt-pm-e1'), ybt_pm_e2: g('av-ybt-pm-e2'), ybt_pm_e3: g('av-ybt-pm-e3'),
-        ybt_pl_e1: g('av-ybt-pl-e1'), ybt_pl_e2: g('av-ybt-pl-e2'), ybt_pl_e3: g('av-ybt-pl-e3'),
-        ybt_ant_e_best: ybt_ant_e, ybt_pm_e_best: ybt_pm_e, ybt_pl_e_best: ybt_pl_e, ybt_composto_e: ybt_comp_e,
-        ybt_lsi: avLSI(ybt_comp_d,ybt_comp_e),
-        observacoes: document.getElementById('av-obs')?.value.trim() || null
+        ...avColetarCampos()
       }).eq('id', id).select('id');
       if (error) throw error;
       if (!alteradas?.length) throw ERRO_SEM_LINHAS;
@@ -4911,7 +4897,8 @@ async function renderAvaliacao() {
   const athleteMap = {};
   athletes.forEach(a => athleteMap[a.id] = a);
 
-  const { data: all } = await supa.from('functional_assessments').select('*').order('data', {ascending: false});
+  const { data: all } = await buscarTudo(() => supa.from('functional_assessments').select('*')
+    .order('data', {ascending: false}).order('id', {ascending: false}));
   const filtered = currentFilter ? (all||[]).filter(r => r.athleteId == currentFilter) : (all||[]);
 
   const lista = document.getElementById('av-lista');
@@ -4928,7 +4915,7 @@ async function renderAvaliacao() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
         <div>
           <div style="font-size:16px;font-weight:700;">${escapeHtml(a.apelido||a.nome||'—')}</div>
-          <div style="font-size:12px;color:var(--cinza-texto);">📅 ${formatDate(r.data)} &nbsp;|&nbsp; ${r.posicao||'—'} &nbsp;|&nbsp; ${r.peso||'—'} kg / ${r.altura||'—'} m</div>
+          <div style="font-size:12px;color:var(--cinza-texto);">📅 ${formatDate(r.data)} &nbsp;|&nbsp; ${vz(r.posicao)} &nbsp;|&nbsp; ${vz(r.peso)} kg / ${vz(r.altura)} m</div>
         </div>
         <div style="display:flex;gap:8px;">
           <button onclick="toggleAvaliacaoDetalhe(${r.id})" class="btn btn-ghost btn-sm">👁️ Ver completo</button>
@@ -4939,52 +4926,52 @@ async function renderAvaliacao() {
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;font-size:12px;">
-        ${r.mmii_d||r.mmii_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">MMII</div><div>D: <strong>${r.mmii_d||'—'}</strong> cm &nbsp; E: <strong>${r.mmii_e||'—'}</strong> cm</div></div>` : ''}
-        ${r.squeeze_d||r.squeeze_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Squeeze Test (dor 0-10)</div><div>D: <strong>${r.squeeze_d||'—'}</strong> &nbsp; E: <strong>${r.squeeze_e||'—'}</strong></div></div>` : ''}
-        ${r.lunge_d||r.lunge_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Lunge Test</div><div>D: <strong>${r.lunge_d||'—'}°</strong> &nbsp; E: <strong>${r.lunge_e||'—'}°</strong></div></div>` : ''}
-        ${r.side_hop_d_best||r.side_hop_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop — melhor (s)</div><div>D: <strong>${r.side_hop_d_best||'—'}</strong> &nbsp; E: <strong>${r.side_hop_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.side_hop_lsi)}</div></div>` : ''}
-        ${r.slh_d_best||r.slh_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop — melhor (m)</div><div>D: <strong>${r.slh_d_best||'—'}</strong> &nbsp; E: <strong>${r.slh_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.slh_lsi)}</div></div>` : ''}
-        ${r.grip_d_best||r.grip_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar — melhor (kgf)</div><div>D: <strong>${r.grip_d_best||'—'}</strong> &nbsp; E: <strong>${r.grip_e_best||'—'}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.grip_lsi)}</div></div>` : ''}
-        ${r.isquio_d||r.isquio_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Isquiossurais (°)</div><div>D: <strong>${r.isquio_d||'—'}</strong> &nbsp; E: <strong>${r.isquio_e||'—'}</strong></div></div>` : ''}
-        ${r.thomas_iliopsoas_d||r.thomas_iliopsoas_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Iliopsoas (°)</div><div>D: <strong>${r.thomas_iliopsoas_d||'—'}</strong> &nbsp; E: <strong>${r.thomas_iliopsoas_e||'—'}</strong></div></div>` : ''}
-        ${r.thomas_reto_d||r.thomas_reto_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Reto Femoral (°)</div><div>D: <strong>${r.thomas_reto_d||'—'}</strong> &nbsp; E: <strong>${r.thomas_reto_e||'—'}</strong></div></div>` : ''}
-        ${r.nordic_d ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Nordic Hamstring bilateral (°)</div><div><strong>${r.nordic_d||'—'}°</strong></div></div>` : ''}
-        ${r.ybt_composto_d||r.ybt_composto_e ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Y-Balance Composto</div><div>D: <strong>${r.ybt_composto_d||'—'}%</strong> &nbsp; E: <strong>${r.ybt_composto_e||'—'}%</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.ybt_lsi)}</div></div>` : ''}
+        ${tem(r.mmii_d)||tem(r.mmii_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">MMII</div><div>D: <strong>${vz(r.mmii_d)}</strong> cm &nbsp; E: <strong>${vz(r.mmii_e)}</strong> cm</div></div>` : ''}
+        ${tem(r.squeeze_d)||tem(r.squeeze_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Squeeze Test (dor 0-10)</div><div>D: <strong>${vz(r.squeeze_d)}</strong> &nbsp; E: <strong>${vz(r.squeeze_e)}</strong></div></div>` : ''}
+        ${tem(r.lunge_d)||tem(r.lunge_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Lunge Test</div><div>D: <strong>${vz(r.lunge_d)}°</strong> &nbsp; E: <strong>${vz(r.lunge_e)}°</strong></div></div>` : ''}
+        ${tem(r.side_hop_d_best)||tem(r.side_hop_e_best) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop — melhor (s)</div><div>D: <strong>${vz(r.side_hop_d_best)}</strong> &nbsp; E: <strong>${vz(r.side_hop_e_best)}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.side_hop_lsi)}</div></div>` : ''}
+        ${tem(r.slh_d_best)||tem(r.slh_e_best) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop — melhor (m)</div><div>D: <strong>${vz(r.slh_d_best)}</strong> &nbsp; E: <strong>${vz(r.slh_e_best)}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.slh_lsi)}</div></div>` : ''}
+        ${tem(r.grip_d_best)||tem(r.grip_e_best) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar — melhor (kgf)</div><div>D: <strong>${vz(r.grip_d_best)}</strong> &nbsp; E: <strong>${vz(r.grip_e_best)}</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.grip_lsi)}</div></div>` : ''}
+        ${tem(r.isquio_d)||tem(r.isquio_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Isquiossurais (°)</div><div>D: <strong>${vz(r.isquio_d)}</strong> &nbsp; E: <strong>${vz(r.isquio_e)}</strong></div></div>` : ''}
+        ${tem(r.thomas_iliopsoas_d)||tem(r.thomas_iliopsoas_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Iliopsoas (°)</div><div>D: <strong>${vz(r.thomas_iliopsoas_d)}</strong> &nbsp; E: <strong>${vz(r.thomas_iliopsoas_e)}</strong></div></div>` : ''}
+        ${tem(r.thomas_reto_d)||tem(r.thomas_reto_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Thomas — Reto Femoral (°)</div><div>D: <strong>${vz(r.thomas_reto_d)}</strong> &nbsp; E: <strong>${vz(r.thomas_reto_e)}</strong></div></div>` : ''}
+        ${tem(r.nordic_d) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Nordic Hamstring bilateral (°)</div><div><strong>${vz(r.nordic_d)}°</strong></div></div>` : ''}
+        ${tem(r.ybt_composto_d)||tem(r.ybt_composto_e) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Y-Balance Composto</div><div>D: <strong>${vz(r.ybt_composto_d)}%</strong> &nbsp; E: <strong>${vz(r.ybt_composto_e)}%</strong></div><div style="margin-top:4px;">LSI: ${lsiBadge(r.ybt_lsi)}</div></div>` : ''}
       </div>
 
       <!-- Detalhe expandido (oculto por padrão) -->
       <div id="av-detalhe-${r.id}" style="display:none;margin-top:16px;border-top:1px solid var(--cinza-borda);padding-top:16px;">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:12px;">Todas as tentativas</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;font-size:12px;">
-          ${r.side_hop_d1||r.side_hop_e1 ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop — tentativas (s)</div>
+          ${tem(r.side_hop_d1)||tem(r.side_hop_e1) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Side Hop — tentativas (s)</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
-              <div>D1: <strong>${r.side_hop_d1||'—'}</strong></div><div>E1: <strong>${r.side_hop_e1||'—'}</strong></div>
+              <div>D1: <strong>${vz(r.side_hop_d1)}</strong></div><div>E1: <strong>${vz(r.side_hop_e1)}</strong></div>
               <div></div>
-              <div>D2: <strong>${r.side_hop_d2||'—'}</strong></div><div>E2: <strong>${r.side_hop_e2||'—'}</strong></div>
+              <div>D2: <strong>${vz(r.side_hop_d2)}</strong></div><div>E2: <strong>${vz(r.side_hop_e2)}</strong></div>
               <div></div>
-              <div>D3: <strong>${r.side_hop_d3||'—'}</strong></div><div>E3: <strong>${r.side_hop_e3||'—'}</strong></div>
+              <div>D3: <strong>${vz(r.side_hop_d3)}</strong></div><div>E3: <strong>${vz(r.side_hop_e3)}</strong></div>
             </div></div>` : ''}
-          ${r.slh_d1||r.slh_e1 ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop — tentativas (m)</div>
+          ${tem(r.slh_d1)||tem(r.slh_e1) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Single Leg Hop — tentativas (m)</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
-              <div>D1: <strong>${r.slh_d1||'—'}</strong></div><div>E1: <strong>${r.slh_e1||'—'}</strong></div>
+              <div>D1: <strong>${vz(r.slh_d1)}</strong></div><div>E1: <strong>${vz(r.slh_e1)}</strong></div>
               <div></div>
-              <div>D2: <strong>${r.slh_d2||'—'}</strong></div><div>E2: <strong>${r.slh_e2||'—'}</strong></div>
+              <div>D2: <strong>${vz(r.slh_d2)}</strong></div><div>E2: <strong>${vz(r.slh_e2)}</strong></div>
               <div></div>
-              <div>D3: <strong>${r.slh_d3||'—'}</strong></div><div>E3: <strong>${r.slh_e3||'—'}</strong></div>
+              <div>D3: <strong>${vz(r.slh_d3)}</strong></div><div>E3: <strong>${vz(r.slh_e3)}</strong></div>
             </div></div>` : ''}
-          ${r.grip_d1||r.grip_e1 ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar — tentativas (kgf)</div>
+          ${tem(r.grip_d1)||tem(r.grip_e1) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Preensão Palmar — tentativas (kgf)</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
-              <div>D1: <strong>${r.grip_d1||'—'}</strong></div><div>E1: <strong>${r.grip_e1||'—'}</strong></div>
+              <div>D1: <strong>${vz(r.grip_d1)}</strong></div><div>E1: <strong>${vz(r.grip_e1)}</strong></div>
               <div></div>
-              <div>D2: <strong>${r.grip_d2||'—'}</strong></div><div>E2: <strong>${r.grip_e2||'—'}</strong></div>
+              <div>D2: <strong>${vz(r.grip_d2)}</strong></div><div>E2: <strong>${vz(r.grip_e2)}</strong></div>
               <div></div>
-              <div>D3: <strong>${r.grip_d3||'—'}</strong></div><div>E3: <strong>${r.grip_e3||'—'}</strong></div>
+              <div>D3: <strong>${vz(r.grip_d3)}</strong></div><div>E3: <strong>${vz(r.grip_e3)}</strong></div>
             </div></div>` : ''}
-          ${r.ybt_ant_d_best||r.ybt_ant_e_best ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Y-Balance — melhores (cm)</div>
+          ${tem(r.ybt_ant_d_best)||tem(r.ybt_ant_e_best) ? `<div class="mon-card" style="padding:10px;"><div class="mon-label">Y-Balance — melhores (cm)</div>
             <div style="margin-top:4px;">
-              <div>ANT: D <strong>${r.ybt_ant_d_best||'—'}</strong> / E <strong>${r.ybt_ant_e_best||'—'}</strong></div>
-              <div>PM: D <strong>${r.ybt_pm_d_best||'—'}</strong> / E <strong>${r.ybt_pm_e_best||'—'}</strong></div>
-              <div>PL: D <strong>${r.ybt_pl_d_best||'—'}</strong> / E <strong>${r.ybt_pl_e_best||'—'}</strong></div>
+              <div>ANT: D <strong>${vz(r.ybt_ant_d_best)}</strong> / E <strong>${vz(r.ybt_ant_e_best)}</strong></div>
+              <div>PM: D <strong>${vz(r.ybt_pm_d_best)}</strong> / E <strong>${vz(r.ybt_pm_e_best)}</strong></div>
+              <div>PL: D <strong>${vz(r.ybt_pl_d_best)}</strong> / E <strong>${vz(r.ybt_pl_e_best)}</strong></div>
             </div></div>` : ''}
         </div>
         ${r.observacoes ? `<div style="margin-top:12px;font-size:12px;color:var(--cinza-texto);">📝 ${escapeHtml(r.observacoes)}</div>` : ''}
@@ -5032,70 +5019,78 @@ function nutAtualizarIdade() {
 }
 window.nutDataMudou = function() { nutAtualizarIdade(); nutCalc(); };
 
-function nutCalc() {
-  const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
-  const formula = document.getElementById('nut-formula')?.value || 'JP7';
-  const equacao = document.getElementById('nut-equacao')?.value || 'brozek';
-  // Usa peso do campo editável do formulário
-  const peso = parseFloat(document.getElementById('nut-peso-atual')?.value) || (nutAtletaCache ? parseFloat(nutAtletaCache.peso) : null);
+// Composição corporal a partir do formulário. Usada por nutCalc (tela) e por
+// nutSalvar (gravação): a tela e o banco usam sempre o mesmo cálculo.
+function nutCalcular() {
+  const g = id => numOuNull(document.getElementById(id)?.value);
   const a = nutAtletaCache;
   const idade = nutIdade();
+  const formula = document.getElementById('nut-formula')?.value || 'JP7';
+  const equacao = document.getElementById('nut-equacao')?.value || 'brozek';
+  const pgIdeal = g('nut-pgordura-ideal') || 12;   // vazio → 12% (padrão)
+  // Peso do campo editável do formulário (pode ser diferente do cadastro)
+  const peso = g('nut-peso-atual') ?? numOuNull(a?.peso);
+  const altura = numOuNull(a?.altura);                       // como está no cadastro
+  const alturaM = altura ? (altura > 3 ? altura / 100 : altura) : null;
 
-  const peit = g('nut-peitoral'), axil = g('nut-axilar'), tric = g('nut-triceps');
-  const sube = g('nut-subescapular'), supr = g('nut-suprailiaca');
-  const abdo = g('nut-abdominal'), coxa = g('nut-coxa-dc');
-  const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 12;
+  const dobras = {
+    peit: g('nut-peitoral'), axil: g('nut-axilar'), tric: g('nut-triceps'),
+    sube: g('nut-subescapular'), supr: g('nut-suprailiaca'),
+    abdo: g('nut-abdominal'), coxa: g('nut-coxa-dc')
+  };
+  const { peit, axil, tric, sube, supr, abdo, coxa } = dobras;
 
   let soma = null, densidade = null, pgordura = null;
-
-  if (formula === 'JP7' && peit&&axil&&tric&&sube&&supr&&abdo&&coxa && idade) {
-    soma = peit+axil+tric+sube+supr+abdo+coxa;
+  if (formula === 'JP7' && peit && axil && tric && sube && supr && abdo && coxa && idade) {
+    soma = peit + axil + tric + sube + supr + abdo + coxa;
     densidade = 1.112 - (0.00043499*soma) + (0.00000055*soma*soma) - (0.00028826*idade);
-  } else if (formula === 'JP3' && peit&&abdo&&coxa && idade) {
-    soma = peit+abdo+coxa;
+  } else if (formula === 'JP3' && peit && abdo && coxa && idade) {
+    soma = peit + abdo + coxa;
     densidade = 1.10938 - (0.0008267*soma) + (0.0000016*soma*soma) - (0.0002574*idade);
-  } else if (formula === 'faulkner' && tric&&sube&&supr&&abdo) {
-    soma = tric+sube+supr+abdo;
+  } else if (formula === 'faulkner' && tric && sube && supr && abdo) {
+    soma = tric + sube + supr + abdo;
     pgordura = (soma * 0.153) + 5.783;
-  } else if (formula === 'deurenberg' && a?.peso && a?.altura && idade) {
-    const imc = parseFloat(a.peso) / (parseFloat(a.altura) ** 2);
-    pgordura = (1.20 * imc) + (0.23 * idade) - 10.8 - 5.4;
+  } else if (formula === 'deurenberg' && peso && alturaM && idade) {
+    // IMC com o peso desta avaliação (antes usava o peso do cadastro)
+    const imc = peso / (alturaM ** 2);
+    pgordura = (1.20 * imc) + (0.23 * idade) - 10.8 - 5.4;   // sexo masculino
   }
-
   if (densidade && !pgordura) {
-    if (equacao === 'siri') pgordura = (4.95/densidade - 4.50) * 100;
-    else pgordura = (4.57/densidade - 4.142) * 100;
+    pgordura = equacao === 'siri' ? (4.95/densidade - 4.50) * 100 : (4.57/densidade - 4.142) * 100;
   }
-
-  const resEl = document.getElementById('nut-resultado');
-  if (!pgordura) { resEl.style.display = 'none'; return; }
-
-  pgordura = parseFloat(pgordura.toFixed(2));
-  const mgorda = peso ? parseFloat((peso * pgordura / 100).toFixed(2)) : null;
+  pgordura = pgordura ? parseFloat(pgordura.toFixed(2)) : null;
+  const mgorda = peso && pgordura ? parseFloat((peso * pgordura / 100).toFixed(2)) : null;
   const mmagra = peso && mgorda ? parseFloat((peso - mgorda).toFixed(2)) : null;
   const pesoIdeal = mmagra ? parseFloat((mmagra / (1 - pgIdeal/100)).toFixed(2)) : null;
 
-  // Fórmula de Rocha — massa óssea
-  const umero = parseFloat(document.getElementById('nut-umero-d')?.value) || null;
-  const punho = parseFloat(document.getElementById('nut-punho-d')?.value) || null;
-  const femur = parseFloat(document.getElementById('nut-femur-d')?.value) || null;
-  const altCm = a?.altura ? (parseFloat(a.altura) > 3 ? parseFloat(a.altura) : parseFloat(a.altura) * 100) : null;
-  let massaOssea = null;
-  if (altCm && umero && punho && femur) {
-    massaOssea = parseFloat((3.02 * (altCm**2 * umero * femur * 0.1)**0.712).toFixed(2));
-  }
+  // Massa óssea — Rocha (1975): MO (kg) = 3,02 × (H² × R × F × 400)^0,712,
+  // H = estatura, R = diâmetro biestiloide do rádio (punho), F = diâmetro
+  // bicondiliano do fêmur, todos em metros (os diâmetros são digitados em cm).
+  // O úmero continua sendo registrado, mas não entra na fórmula.
+  const diam = { umero: g('nut-umero-d'), punho: g('nut-punho-d'), femur: g('nut-femur-d') };
+  const massaOssea = (alturaM && diam.punho && diam.femur)
+    ? parseFloat((3.02 * (alturaM ** 2 * (diam.punho / 100) * (diam.femur / 100) * 400) ** 0.712).toFixed(2)) : null;
 
-  document.getElementById('nut-soma').textContent = soma ? soma.toFixed(1) : '—';
-  document.getElementById('nut-densidade').textContent = densidade ? densidade.toFixed(4) : '—';
-  const pgColor = pgordura <= 12 ? '#00c853' : pgordura <= 17 ? '#ffab00' : '#e0282e';
-  document.getElementById('nut-pgordura').innerHTML = `<span style="color:${pgColor}">${pgordura}</span>`;
-  document.getElementById('nut-mgorda').textContent = mgorda ?? '—';
-  document.getElementById('nut-mmagra').textContent = mmagra ?? '—';
-  document.getElementById('nut-pesoidal').textContent = pesoIdeal ?? '—';
+  return { formula, equacao, idade, peso, altura, pgIdeal, dobras, diam,
+           soma, densidade, pgordura, mgorda, mmagra, pesoIdeal, massaOssea };
+}
+
+function nutCalc() {
+  const c = nutCalcular();
+  const resEl = document.getElementById('nut-resultado');
+  if (!c.pgordura) { resEl.style.display = 'none'; return; }
+
+  document.getElementById('nut-soma').textContent = c.soma ? c.soma.toFixed(1) : '—';
+  document.getElementById('nut-densidade').textContent = c.densidade ? c.densidade.toFixed(4) : '—';
+  const pgColor = c.pgordura <= 12 ? '#00c853' : c.pgordura <= 17 ? '#ffab00' : '#e0282e';
+  document.getElementById('nut-pgordura').innerHTML = `<span style="color:${pgColor}">${c.pgordura}</span>`;
+  document.getElementById('nut-mgorda').textContent = c.mgorda ?? '—';
+  document.getElementById('nut-mmagra').textContent = c.mmagra ?? '—';
+  document.getElementById('nut-pesoidal').textContent = c.pesoIdeal ?? '—';
   const osseoEl = document.getElementById('nut-osseo');
   const osseoBox = document.getElementById('nut-osseo-box');
-  if (osseoEl) osseoEl.textContent = massaOssea ? massaOssea + ' kg' : '—';
-  if (osseoBox) osseoBox.style.display = massaOssea ? 'block' : 'none';
+  if (osseoEl) osseoEl.textContent = c.massaOssea ? c.massaOssea + ' kg' : '—';
+  if (osseoBox) osseoBox.style.display = c.massaOssea ? 'block' : 'none';
   resEl.style.display = 'block';
 }
 
@@ -5179,66 +5174,31 @@ async function nutSalvar(editId) {
   btn.disabled = true; btn.textContent = editando ? 'Atualizando...' : 'Salvando...';
 
   try {
-    const g = id => { const v = document.getElementById(id)?.value; return v !== '' && v !== null && v !== undefined ? parseFloat(v) : null; };
-    const a = nutAtletaCache;
-    const idade = nutIdade();
-    const formula = document.getElementById('nut-formula').value;
-    const equacao = document.getElementById('nut-equacao').value;
-    const pgIdeal = parseFloat(document.getElementById('nut-pgordura-ideal')?.value) || 12;
-    // Peso do campo editável do formulário (pode ser diferente do cadastro)
-    const peso = parseFloat(document.getElementById('nut-peso-atual')?.value) || (a ? parseFloat(a.peso) : null);
-
-    const peit=g('nut-peitoral'), axil=g('nut-axilar'), tric=g('nut-triceps');
-    const sube=g('nut-subescapular'), supr=g('nut-suprailiaca');
-    const abdo=g('nut-abdominal'), coxa=g('nut-coxa-dc');
-
-    let soma=null, densidade=null, pgordura=null;
-    if (formula==='JP7'&&peit&&axil&&tric&&sube&&supr&&abdo&&coxa&&idade) {
-      soma=peit+axil+tric+sube+supr+abdo+coxa;
-      densidade=1.112-(0.00043499*soma)+(0.00000055*soma*soma)-(0.00028826*idade);
-    } else if (formula==='JP3'&&peit&&abdo&&coxa&&idade) {
-      soma=peit+abdo+coxa;
-      densidade=1.10938-(0.0008267*soma)+(0.0000016*soma*soma)-(0.0002574*idade);
-    } else if (formula==='faulkner'&&tric&&sube&&supr&&abdo) {
-      soma=tric+sube+supr+abdo;
-      pgordura=(soma*0.153)+5.783;
-    } else if (formula==='deurenberg'&&a?.peso&&a?.altura&&idade) {
-      const imc=parseFloat(a.peso)/(parseFloat(a.altura)**2);
-      pgordura=(1.20*imc)+(0.23*idade)-10.8-5.4;
-    }
-    if (densidade&&!pgordura) {
-      pgordura=equacao==='siri'?(4.95/densidade-4.50)*100:(4.57/densidade-4.142)*100;
-    }
-    pgordura = pgordura ? parseFloat(pgordura.toFixed(2)) : null;
-    const mgorda = peso&&pgordura ? parseFloat((peso*pgordura/100).toFixed(2)) : null;
-    const mmagra = peso&&mgorda ? parseFloat((peso-mgorda).toFixed(2)) : null;
-    const pesoIdeal = mmagra ? parseFloat((mmagra/(1-pgIdeal/100)).toFixed(2)) : null;
-    const cin=g('nut-cintura'), qua=g('nut-quadril');
-    const rcq = cin&&qua ? parseFloat((cin/qua).toFixed(3)) : null;
+    const c = nutCalcular();   // mesmo cálculo exibido na tela
+    const g = id => numOuNull(document.getElementById(id)?.value);
+    const cin = g('nut-cintura'), qua = g('nut-quadril');
+    const rcq = cin && qua ? parseFloat((cin / qua).toFixed(3)) : null;
 
     const registro = {
-      athleteId, data, formula, equacao,
-      peso: peso||null, altura: a?.altura?parseFloat(a.altura):null, idade, posicao: a?.posicao||null,
-      dc_peitoral:peit, dc_axilar_media:axil, dc_triceps:tric,
-      dc_subescapular:sube, dc_suprailiaca:supr, dc_abdominal:abdo, dc_coxa:coxa,
-      soma_dobras:soma, densidade_corporal:densidade,
-      percentual_gordura:pgordura, massa_gorda:mgorda, massa_magra:mmagra,
-      peso_ideal:pesoIdeal, percentual_gordura_ideal:pgIdeal,
-      circ_cintura:cin, circ_quadril:qua, rcq,
-      circ_braco_d:g('nut-braco-d'), circ_braco_e:g('nut-braco-e'),
-      circ_coxa_d:g('nut-coxa-d'), circ_coxa_e:g('nut-coxa-e'),
-      circ_panturrilha_d:g('nut-pant-d'), circ_panturrilha_e:g('nut-pant-e'),
-      circ_pescoco:g('nut-pescoco'), circ_torax:g('nut-torax'),
-      circ_peitoral:g('nut-circ-peitoral'), circ_abdomen:g('nut-abdomen'),
-      diam_umero_d:g('nut-umero-d'), diam_punho_d:g('nut-punho-d'),
-      diam_femur_d:g('nut-femur-d'),
-      massa_ossea: (()=>{
-        const u=g('nut-umero-d'), p=g('nut-punho-d'), f=g('nut-femur-d');
-        const ac = nutAtletaCache?.altura ? (parseFloat(nutAtletaCache.altura)>3?parseFloat(nutAtletaCache.altura):parseFloat(nutAtletaCache.altura)*100) : null;
-        return (ac&&u&&p&&f) ? parseFloat((3.02*(ac**2*u*f*0.1)**0.712).toFixed(2)) : null;
-      })(),
-      observacoes:document.getElementById('nut-obs').value.trim()||null
+      athleteId, data, formula: c.formula, equacao: c.equacao,
+      peso: c.peso, altura: c.altura, idade: c.idade, posicao: nutAtletaCache?.posicao || null,
+      dc_peitoral: c.dobras.peit, dc_axilar_media: c.dobras.axil, dc_triceps: c.dobras.tric,
+      dc_subescapular: c.dobras.sube, dc_suprailiaca: c.dobras.supr,
+      dc_abdominal: c.dobras.abdo, dc_coxa: c.dobras.coxa,
+      soma_dobras: c.soma, densidade_corporal: c.densidade,
+      percentual_gordura: c.pgordura, massa_gorda: c.mgorda, massa_magra: c.mmagra,
+      peso_ideal: c.pesoIdeal, percentual_gordura_ideal: c.pgIdeal,
+      circ_cintura: cin, circ_quadril: qua, rcq,
+      circ_braco_d: g('nut-braco-d'), circ_braco_e: g('nut-braco-e'),
+      circ_coxa_d: g('nut-coxa-d'), circ_coxa_e: g('nut-coxa-e'),
+      circ_panturrilha_d: g('nut-pant-d'), circ_panturrilha_e: g('nut-pant-e'),
+      circ_pescoco: g('nut-pescoco'), circ_torax: g('nut-torax'),
+      circ_peitoral: g('nut-circ-peitoral'), circ_abdomen: g('nut-abdomen'),
+      diam_umero_d: c.diam.umero, diam_punho_d: c.diam.punho, diam_femur_d: c.diam.femur,
+      massa_ossea: c.massaOssea,
+      observacoes: document.getElementById('nut-obs').value.trim() || null
     };
+    const peso = c.peso, a = nutAtletaCache;
 
     if (editando) {
       // Atualiza no lugar; createdAt original é preservado.
@@ -5378,40 +5338,40 @@ window.exportNutricionalPDF = async function(id) {
 <div class="section-title">Dados do Atleta</div>
 <div class="grid4">
   <div><div class="lbl">Atleta</div><div class="val">${a?.apelido||a?.nome||'—'}</div></div>
-  <div><div class="lbl">Posição</div><div class="val">${r.posicao||'—'}</div></div>
-  <div><div class="lbl">Peso / Altura</div><div class="val">${r.peso||'—'} kg / ${r.altura||'—'} m</div></div>
-  <div><div class="lbl">Idade</div><div class="val">${r.idade||'—'} anos</div></div>
+  <div><div class="lbl">Posição</div><div class="val">${vz(r.posicao)}</div></div>
+  <div><div class="lbl">Peso / Altura</div><div class="val">${vz(r.peso)} kg / ${vz(r.altura)} m</div></div>
+  <div><div class="lbl">Idade</div><div class="val">${vz(r.idade)} anos</div></div>
 </div>
 
 <div class="section-title">Composição Corporal</div>
 <div class="grid3">
-  <div style="text-align:center;"><div class="lbl">% Gordura</div><div class="val" style="font-size:28px;color:${pgColor};">${r.percentual_gordura||'—'}%</div></div>
-  <div style="text-align:center;"><div class="lbl">Massa Gorda</div><div class="val" style="font-size:22px;">${r.massa_gorda||'—'} kg</div></div>
-  <div style="text-align:center;"><div class="lbl">Massa Magra</div><div class="val" style="font-size:22px;">${r.massa_magra||'—'} kg</div></div>
-  <div style="text-align:center;"><div class="lbl">Peso Atual</div><div class="val">${r.peso||'—'} kg</div></div>
-  <div style="text-align:center;"><div class="lbl">Peso Ideal (${r.percentual_gordura_ideal ?? '—'}% gordura)</div><div class="val" style="color:#00c853;">${r.peso_ideal||'—'} kg</div></div>
-  <div style="text-align:center;"><div class="lbl">Soma Dobras</div><div class="val">${r.soma_dobras||'—'} mm</div></div>
+  <div style="text-align:center;"><div class="lbl">% Gordura</div><div class="val" style="font-size:28px;color:${pgColor};">${vz(r.percentual_gordura)}%</div></div>
+  <div style="text-align:center;"><div class="lbl">Massa Gorda</div><div class="val" style="font-size:22px;">${vz(r.massa_gorda)} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Massa Magra</div><div class="val" style="font-size:22px;">${vz(r.massa_magra)} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Peso Atual</div><div class="val">${vz(r.peso)} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Peso Ideal (${r.percentual_gordura_ideal ?? '—'}% gordura)</div><div class="val" style="color:#00c853;">${vz(r.peso_ideal)} kg</div></div>
+  <div style="text-align:center;"><div class="lbl">Soma Dobras</div><div class="val">${vz(r.soma_dobras)} mm</div></div>
 </div>
 
 ${r.dc_peitoral||r.dc_abdominal?`
 <div class="section-title">Dobras Cutâneas (mm)</div>
 <table><tr><th>Peitoral</th><th>Axilar Média</th><th>Tríceps</th><th>Subescapular</th><th>Suprailíaca</th><th>Abdominal</th><th>Coxa</th></tr>
-<tr><td>${r.dc_peitoral||'—'}</td><td>${r.dc_axilar_media||'—'}</td><td>${r.dc_triceps||'—'}</td><td>${r.dc_subescapular||'—'}</td><td>${r.dc_suprailiaca||'—'}</td><td>${r.dc_abdominal||'—'}</td><td>${r.dc_coxa||'—'}</td></tr>
+<tr><td>${vz(r.dc_peitoral)}</td><td>${vz(r.dc_axilar_media)}</td><td>${vz(r.dc_triceps)}</td><td>${vz(r.dc_subescapular)}</td><td>${vz(r.dc_suprailiaca)}</td><td>${vz(r.dc_abdominal)}</td><td>${vz(r.dc_coxa)}</td></tr>
 </table>`:''}
 
 ${r.circ_cintura||r.circ_braco_d||r.circ_pescoco?`
 <div class="section-title">Circunferências (cm)</div>
 <table>
   <tr><th>Pescoço</th><th>Tórax</th><th>Peitoral</th><th>Cintura</th><th>Abdômen</th><th>Quadril</th><th>RCQ</th></tr>
-  <tr><td>${r.circ_pescoco||'—'}</td><td>${r.circ_torax||'—'}</td><td>${r.circ_peitoral||'—'}</td><td>${r.circ_cintura||'—'}</td><td>${r.circ_abdomen||'—'}</td><td>${r.circ_quadril||'—'}</td><td>${r.rcq||'—'}</td></tr>
+  <tr><td>${vz(r.circ_pescoco)}</td><td>${vz(r.circ_torax)}</td><td>${vz(r.circ_peitoral)}</td><td>${vz(r.circ_cintura)}</td><td>${vz(r.circ_abdomen)}</td><td>${vz(r.circ_quadril)}</td><td>${vz(r.rcq)}</td></tr>
   <tr><th>Braço D</th><th>Braço E</th><th>Coxa D</th><th>Coxa E</th><th>Pant. D</th><th>Pant. E</th><th></th></tr>
-  <tr><td>${r.circ_braco_d||'—'}</td><td>${r.circ_braco_e||'—'}</td><td>${r.circ_coxa_d||'—'}</td><td>${r.circ_coxa_e||'—'}</td><td>${r.circ_panturrilha_d||'—'}</td><td>${r.circ_panturrilha_e||'—'}</td><td></td></tr>
+  <tr><td>${vz(r.circ_braco_d)}</td><td>${vz(r.circ_braco_e)}</td><td>${vz(r.circ_coxa_d)}</td><td>${vz(r.circ_coxa_e)}</td><td>${vz(r.circ_panturrilha_d)}</td><td>${vz(r.circ_panturrilha_e)}</td><td></td></tr>
 </table>`:''}
 
 ${r.diam_umero_d||r.diam_punho_d||r.diam_femur_d?`
 <div class="section-title">Diâmetros Ósseos (cm)</div>
 <table><tr><th>Úmero D</th><th>Punho D</th><th>Fêmur D</th></tr>
-<tr><td>${r.diam_umero_d||'—'}</td><td>${r.diam_punho_d||'—'}</td><td>${r.diam_femur_d||'—'}</td></tr>
+<tr><td>${vz(r.diam_umero_d)}</td><td>${vz(r.diam_punho_d)}</td><td>${vz(r.diam_femur_d)}</td></tr>
 </table>`:''}
 
 ${r.observacoes?`<div class="section-title">Observações</div><p style="font-size:12px;color:#555;line-height:1.6;">${r.observacoes}</p>`:''}
@@ -5445,9 +5405,11 @@ async function renderNutricional() {
   const atletaMap = {};
   athletes.forEach(a => atletaMap[a.id] = a);
 
-  let query = supa.from('nutritional_assessments').select('*').order('data', {ascending: false});
-  if (currentVal) query = query.eq('athleteId', currentVal);
-  const { data: all } = await query;
+  const { data: all } = await buscarTudo(() => {
+    let q = supa.from('nutritional_assessments').select('*')
+      .order('data', {ascending: false}).order('id', {ascending: false});
+    return currentVal ? q.eq('athleteId', currentVal) : q;
+  });
 
   const lista = document.getElementById('nut-lista');
   if (!all?.length) {
@@ -5464,7 +5426,7 @@ async function renderNutricional() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
         <div>
           <div style="font-size:16px;font-weight:700;">${escapeHtml(a.apelido||a.nome||'—')}</div>
-          <div style="font-size:12px;color:var(--cinza-texto);">📅 ${formatDate(r.data)} &nbsp;|&nbsp; ${r.formula||'JP7'} / ${r.equacao==='brozek'?'Brozek':'Siri'} &nbsp;|&nbsp; ${r.posicao||'—'}</div>
+          <div style="font-size:12px;color:var(--cinza-texto);">📅 ${formatDate(r.data)} &nbsp;|&nbsp; ${r.formula||'JP7'} / ${r.equacao==='brozek'?'Brozek':'Siri'} &nbsp;|&nbsp; ${vz(r.posicao)}</div>
         </div>
         <div style="display:flex;gap:8px;">
           <button onclick="editNutricional(${r.id})" class="btn btn-ghost btn-sm">✏️ Editar</button>
@@ -5630,8 +5592,8 @@ async function renderEvolucaoMonitoramento(athleteId, container) {
 }
 
 async function renderEvolucaoAvaliacao(athleteId, container) {
-  const { data: avs } = await supa.from('functional_assessments')
-    .select('*').eq('athleteId', athleteId).order('data',{ascending:true});
+  const { data: avs } = await buscarTudo(() => supa.from('functional_assessments')
+    .select('*').eq('athleteId', athleteId).order('data',{ascending:true}).order('id'));
 
   if (!avs?.length) {
     container.innerHTML = `<div class="empty-state"><div class="icon">🏃</div><h3>Sem avaliações funcionais</h3></div>`;
@@ -5663,23 +5625,23 @@ async function renderEvolucaoAvaliacao(athleteId, container) {
 
   container.innerHTML = compHTML +
     makeChart('LSI — Side Hop, SLH e Preensão Palmar (%)', labels,
-      [{data:avs.map(a=>a.side_hop_lsi||null),color:'#e0282e'},
-       {data:avs.map(a=>a.slh_lsi||null),color:'#00c853'},
-       {data:avs.map(a=>a.grip_lsi||null),color:'#60A5FA'}],
+      [{data:avs.map(a=>a.side_hop_lsi ?? null),color:'#e0282e'},
+       {data:avs.map(a=>a.slh_lsi ?? null),color:'#00c853'},
+       {data:avs.map(a=>a.grip_lsi ?? null),color:'#60A5FA'}],
       '%',[{label:'Side Hop LSI',color:'#e0282e'},{label:'SLH LSI',color:'#00c853'},{label:'Grip LSI',color:'#60A5FA'}]) +
     makeChart('Y-Balance Composto D e E (%)', labels,
-      [{data:avs.map(a=>a.ybt_composto_d||null),color:'#ffab00'},
-       {data:avs.map(a=>a.ybt_composto_e||null),color:'#a78bfa'}],
+      [{data:avs.map(a=>a.ybt_composto_d ?? null),color:'#ffab00'},
+       {data:avs.map(a=>a.ybt_composto_e ?? null),color:'#a78bfa'}],
       '%',[{label:'Composto D',color:'#ffab00'},{label:'Composto E',color:'#a78bfa'}]) +
     makeChart('Flexibilidade Isquiossurais (°)', labels,
-      [{data:avs.map(a=>a.isquio_d||null),color:'#e0282e'},
-       {data:avs.map(a=>a.isquio_e||null),color:'#60A5FA'}],
+      [{data:avs.map(a=>a.isquio_d ?? null),color:'#e0282e'},
+       {data:avs.map(a=>a.isquio_e ?? null),color:'#60A5FA'}],
       '°',[{label:'Isquio D',color:'#e0282e'},{label:'Isquio E',color:'#60A5FA'}]);
 }
 
 async function renderEvolucaoNutricional(athleteId, container) {
-  const { data: avs } = await supa.from('nutritional_assessments')
-    .select('*').eq('athleteId', athleteId).order('data', {ascending: true});
+  const { data: avs } = await buscarTudo(() => supa.from('nutritional_assessments')
+    .select('*').eq('athleteId', athleteId).order('data', {ascending: true}).order('id'));
 
   if (!avs?.length) {
     container.innerHTML = `<div class="empty-state"><div class="icon">🥗</div><h3>Sem avaliações nutricionais</h3></div>`;
@@ -5689,18 +5651,18 @@ async function renderEvolucaoNutricional(athleteId, container) {
 
   container.innerHTML =
     makeChart('Histórico de Peso (kg)', labels,
-      [{data: avs.map(a=>a.peso||null), color:'#60A5FA'}],
+      [{data: avs.map(a=>a.peso ?? null), color:'#60A5FA'}],
       'kg', [{label:'Peso', color:'#60A5FA'}]) +
     makeChart('% Gordura e Peso Ideal (kg)', labels,
-      [{data: avs.map(a=>a.percentual_gordura||null), color:'#e0282e'},
-       {data: avs.map(a=>a.peso_ideal||null), color:'#00c853'}],
+      [{data: avs.map(a=>a.percentual_gordura ?? null), color:'#e0282e'},
+       {data: avs.map(a=>a.peso_ideal ?? null), color:'#00c853'}],
       '', [{label:'% Gordura', color:'#e0282e'}, {label:'Peso Ideal (kg)', color:'#00c853'}]) +
     makeChart('Massa Magra e Massa Gorda (kg)', labels,
-      [{data: avs.map(a=>a.massa_magra||null), color:'#60A5FA'},
-       {data: avs.map(a=>a.massa_gorda||null), color:'#ffab00'}],
+      [{data: avs.map(a=>a.massa_magra ?? null), color:'#60A5FA'},
+       {data: avs.map(a=>a.massa_gorda ?? null), color:'#ffab00'}],
       'kg', [{label:'Massa Magra', color:'#60A5FA'}, {label:'Massa Gorda', color:'#ffab00'}]) +
     makeChart('Soma das Dobras (mm)', labels,
-      [{data: avs.map(a=>a.soma_dobras||null), color:'#a78bfa'}],
+      [{data: avs.map(a=>a.soma_dobras ?? null), color:'#a78bfa'}],
       'mm', [{label:'Soma Dobras', color:'#a78bfa'}]);
 }
 
@@ -5715,17 +5677,17 @@ window.renderComparacao = function(avs) {
   const d1 = formatDate(a1.data), d2 = formatDate(a2.data);
 
   function compRow(label, v1d, v1e, v2d, v2e, unit='', lsi1=null, lsi2=null) {
-    if (!v1d && !v1e && !v2d && !v2e) return '';
+    if (!tem(v1d) && !tem(v1e) && !tem(v2d) && !tem(v2e)) return '';
     const delta = (v1, v2) => {
-      if (v1===null || v2===null) return '';
+      if (!tem(v1) || !tem(v2)) return '';
       const d = (v2-v1);
       const color = d > 0 ? '#00c853' : d < 0 ? '#e0282e' : '#8a909e';
       return `<span style="color:${color};font-size:11px;">${d>0?'+':''}${d.toFixed(1)}${unit}</span>`;
     };
     return `<tr>
       <td style="padding:7px 10px;font-size:12px;color:var(--cinza-texto);">${label}</td>
-      <td style="padding:7px 10px;text-align:center;font-size:12px;">${v1d!==null?v1d+unit:'—'} / ${v1e!==null?v1e+unit:'—'}${lsi1?` <span style="font-size:10px;color:var(--cinza-texto);">(${lsi1}%)</span>`:''}</td>
-      <td style="padding:7px 10px;text-align:center;font-size:12px;">${v2d!==null?v2d+unit:'—'} / ${v2e!==null?v2e+unit:'—'}${lsi2?` <span style="font-size:10px;color:var(--cinza-texto);">(${lsi2}%)</span>`:''}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:12px;">${tem(v1d)?v1d+unit:'—'} / ${tem(v1e)?v1e+unit:'—'}${lsi1?` <span style="font-size:10px;color:var(--cinza-texto);">(${lsi1}%)</span>`:''}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:12px;">${tem(v2d)?v2d+unit:'—'} / ${tem(v2e)?v2e+unit:'—'}${lsi2?` <span style="font-size:10px;color:var(--cinza-texto);">(${lsi2}%)</span>`:''}</td>
       <td style="padding:7px 10px;text-align:center;">${delta(v1d,v2d)} / ${delta(v1e,v2e)}</td>
     </tr>`;
   }
@@ -5765,27 +5727,27 @@ window.exportAvaliacaoPDF = async function(id) {
   const hoje = new Date().toLocaleDateString('pt-BR');
 
   function row(label, vd, ve, unit='') {
-    if (!vd && !ve) return '';
+    if (!tem(vd) && !tem(ve)) return '';
     return `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">${label}</td>
       <td style="padding:6px 10px;text-align:center;font-weight:600;">${vd !== null && vd !== undefined ? vd+unit : '—'}</td>
       <td style="padding:6px 10px;text-align:center;font-weight:600;">${ve !== null && ve !== undefined ? ve+unit : '—'}</td>
       <td style="padding:6px 10px;text-align:center;"></td></tr>`;
   }
   function rowLSI(label, vd, ve, lsi, unit='') {
-    if (!vd && !ve) return '';
+    if (!tem(vd) && !tem(ve)) return '';
     const lsiColor = lsi >= 90 ? '#00c853' : lsi >= 80 ? '#ff8c00' : '#e0282e';
     return `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">${label}</td>
-      <td style="padding:6px 10px;text-align:center;font-weight:600;">${vd !== null ? vd+unit : '—'}</td>
-      <td style="padding:6px 10px;text-align:center;font-weight:600;">${ve !== null ? ve+unit : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:600;">${tem(vd) ? vd+unit : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:600;">${tem(ve) ? ve+unit : '—'}</td>
       <td style="padding:6px 10px;text-align:center;font-weight:700;color:${lsiColor};">${lsi ? lsi+'%' : '—'}</td></tr>`;
   }
   function rowSingle(label, val, unit='') {
-    if (!val) return '';
+    if (!tem(val)) return '';
     return `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">${label}</td>
       <td colspan="3" style="padding:6px 10px;font-weight:600;">${val}${unit}</td></tr>`;
   }
   function tentativas(d1,d2,d3,e1,e2,e3,unit='') {
-    return `D: ${d1||'—'} / ${d2||'—'} / ${d3||'—'} ${unit} &nbsp;&nbsp; E: ${e1||'—'} / ${e2||'—'} / ${e3||'—'} ${unit}`;
+    return `D: ${vz(d1)} / ${vz(d2)} / ${vz(d3)} ${unit} &nbsp;&nbsp; E: ${vz(e1)} / ${vz(e2)} / ${vz(e3)} ${unit}`;
   }
 
   const html = `<!DOCTYPE html>
@@ -5822,22 +5784,22 @@ window.exportAvaliacaoPDF = async function(id) {
 
 <div class="athlete-info">
   <div><div class="info-lbl">Atleta</div><div class="info-val">${a?.apelido||a?.nome||'—'}</div></div>
-  <div><div class="info-lbl">Posição</div><div class="info-val">${r.posicao||'—'}</div></div>
-  <div><div class="info-lbl">Peso / Altura</div><div class="info-val">${r.peso||'—'} kg / ${r.altura||'—'} m</div></div>
-  <div><div class="info-lbl">Idade</div><div class="info-val">${r.idade||'—'} anos</div></div>
+  <div><div class="info-lbl">Posição</div><div class="info-val">${vz(r.posicao)}</div></div>
+  <div><div class="info-lbl">Peso / Altura</div><div class="info-val">${vz(r.peso)} kg / ${vz(r.altura)} m</div></div>
+  <div><div class="info-lbl">Idade</div><div class="info-val">${vz(r.idade)} anos</div></div>
 </div>
 
 <div class="section">
   <div class="section-title">Dados Antropométricos e Testes Simples</div>
   <table>
     <tr><th>Teste</th><th>Direito</th><th>Esquerdo</th><th>LSI</th></tr>
-    ${rowSingle('Comprimento de MMII (cm)', r.mmii_d ? `D: ${r.mmii_d} cm / E: ${r.mmii_e||'—'} cm` : null)}
+    ${rowSingle('Comprimento de MMII (cm)', r.mmii_d ? `D: ${r.mmii_d} cm / E: ${vz(r.mmii_e)} cm` : null)}
     ${row('5" Squeeze Test (dor 0-10)', r.squeeze_d, r.squeeze_e)}
     ${row('Lunge Test (°)', r.lunge_d, r.lunge_e, '°')}
-    ${rowSingle('Flexibilidade Isquiossurais (°)', r.isquio_d ? `D: ${r.isquio_d}° / E: ${r.isquio_e||'—'}°` : null)}
-    ${rowSingle('Thomas — Iliopsoas (°)', r.thomas_iliopsoas_d !== null ? `D: ${r.thomas_iliopsoas_d||'—'}° / E: ${r.thomas_iliopsoas_e||'—'}°` : null)}
-    ${rowSingle('Thomas — Reto Femoral (°)', r.thomas_reto_d !== null ? `D: ${r.thomas_reto_d||'—'}° / E: ${r.thomas_reto_e||'—'}°` : null)}
-    ${rowSingle('Nordic Hamstring bilateral (°)', r.nordic_d ? `${r.nordic_d}°` : null)}
+    ${rowSingle('Flexibilidade Isquiossurais (°)', r.isquio_d ? `D: ${r.isquio_d}° / E: ${vz(r.isquio_e)}°` : null)}
+    ${rowSingle('Thomas — Iliopsoas (°)', tem(r.thomas_iliopsoas_d) || tem(r.thomas_iliopsoas_e) ? `D: ${vz(r.thomas_iliopsoas_d)}° / E: ${vz(r.thomas_iliopsoas_e)}°` : null)}
+    ${rowSingle('Thomas — Reto Femoral (°)', tem(r.thomas_reto_d) || tem(r.thomas_reto_e) ? `D: ${vz(r.thomas_reto_d)}° / E: ${vz(r.thomas_reto_e)}°` : null)}
+    ${rowSingle('Nordic Hamstring bilateral (°)', tem(r.nordic_d) ? `${r.nordic_d}°` : null)}
   </table>
 </div>
 
@@ -5851,30 +5813,30 @@ window.exportAvaliacaoPDF = async function(id) {
   </table>
 </div>
 
-${r.side_hop_d1||r.slh_d1||r.grip_d1 ? `
+${tem(r.side_hop_d1)||tem(r.slh_d1)||tem(r.grip_d1) ? `
 <div class="section">
   <div class="section-title">Tentativas Individuais</div>
   <table>
     <tr><th>Teste</th><th colspan="3">Tentativas (D1/D2/D3 — E1/E2/E3)</th></tr>
-    ${r.side_hop_d1 ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Side Hop (s)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.side_hop_d1,r.side_hop_d2,r.side_hop_d3,r.side_hop_e1,r.side_hop_e2,r.side_hop_e3,'s')}</td></tr>` : ''}
-    ${r.slh_d1 ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Single Leg Hop (m)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.slh_d1,r.slh_d2,r.slh_d3,r.slh_e1,r.slh_e2,r.slh_e3,'m')}</td></tr>` : ''}
-    ${r.grip_d1 ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Preensão Palmar (kgf)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.grip_d1,r.grip_d2,r.grip_d3,r.grip_e1,r.grip_e2,r.grip_e3,'kgf')}</td></tr>` : ''}
+    ${tem(r.side_hop_d1) ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Side Hop (s)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.side_hop_d1,r.side_hop_d2,r.side_hop_d3,r.side_hop_e1,r.side_hop_e2,r.side_hop_e3,'s')}</td></tr>` : ''}
+    ${tem(r.slh_d1) ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Single Leg Hop (m)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.slh_d1,r.slh_d2,r.slh_d3,r.slh_e1,r.slh_e2,r.slh_e3,'m')}</td></tr>` : ''}
+    ${tem(r.grip_d1) ? `<tr><td style="padding:6px 10px;color:#555;font-size:12px;">Preensão Palmar (kgf)</td><td colspan="3" style="padding:6px 10px;font-size:12px;">${tentativas(r.grip_d1,r.grip_d2,r.grip_d3,r.grip_e1,r.grip_e2,r.grip_e3,'kgf')}</td></tr>` : ''}
   </table>
 </div>` : ''}
 
-${r.ybt_composto_d||r.ybt_composto_e ? `
+${tem(r.ybt_composto_d)||tem(r.ybt_composto_e) ? `
 <div class="section">
   <div class="section-title">Y-Balance Test</div>
   <table>
     <tr><th>Direção</th><th>Melhor D (cm)</th><th>Melhor E (cm)</th></tr>
-    ${r.ybt_ant_d_best||r.ybt_ant_e_best ? `<tr><td style="padding:6px 10px;color:#555;">Anterior</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_ant_d_best||'—'}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_ant_e_best||'—'}</td></tr>` : ''}
-    ${r.ybt_pm_d_best||r.ybt_pm_e_best ? `<tr><td style="padding:6px 10px;color:#555;">Posteromedial</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pm_d_best||'—'}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pm_e_best||'—'}</td></tr>` : ''}
-    ${r.ybt_pl_d_best||r.ybt_pl_e_best ? `<tr><td style="padding:6px 10px;color:#555;">Posterolateral</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pl_d_best||'—'}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${r.ybt_pl_e_best||'—'}</td></tr>` : ''}
+    ${tem(r.ybt_ant_d_best)||tem(r.ybt_ant_e_best) ? `<tr><td style="padding:6px 10px;color:#555;">Anterior</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${vz(r.ybt_ant_d_best)}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${vz(r.ybt_ant_e_best)}</td></tr>` : ''}
+    ${tem(r.ybt_pm_d_best)||tem(r.ybt_pm_e_best) ? `<tr><td style="padding:6px 10px;color:#555;">Posteromedial</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${vz(r.ybt_pm_d_best)}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${vz(r.ybt_pm_e_best)}</td></tr>` : ''}
+    ${tem(r.ybt_pl_d_best)||tem(r.ybt_pl_e_best) ? `<tr><td style="padding:6px 10px;color:#555;">Posterolateral</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${vz(r.ybt_pl_d_best)}</td><td style="text-align:center;padding:6px 10px;font-weight:600;">${vz(r.ybt_pl_e_best)}</td></tr>` : ''}
     <tr style="background:#f0f0f0;"><td style="padding:8px 10px;font-weight:700;">Escore Composto</td>
-      <td style="text-align:center;padding:8px 10px;font-weight:700;">${r.ybt_composto_d||'—'}%</td>
-      <td style="text-align:center;padding:8px 10px;font-weight:700;">${r.ybt_composto_e||'—'}%</td></tr>
+      <td style="text-align:center;padding:8px 10px;font-weight:700;">${vz(r.ybt_composto_d)}%</td>
+      <td style="text-align:center;padding:8px 10px;font-weight:700;">${vz(r.ybt_composto_e)}%</td></tr>
     <tr><td style="padding:6px 10px;color:#555;">LSI Y-Balance</td>
-      <td colspan="2" style="text-align:center;padding:6px 10px;font-weight:700;color:${r.ybt_lsi>=90?'#00c853':r.ybt_lsi>=80?'#ff8c00':'#e0282e'};">${r.ybt_lsi||'—'}%</td></tr>
+      <td colspan="2" style="text-align:center;padding:6px 10px;font-weight:700;color:${r.ybt_lsi>=90?'#00c853':r.ybt_lsi>=80?'#ff8c00':'#e0282e'};">${vz(r.ybt_lsi)}%</td></tr>
   </table>
 </div>` : ''}
 
@@ -5901,8 +5863,7 @@ window.exportAthletePDF = async function(athleteId) {
 
   const a = await dbGet('athletes', athleteId);
   const sessions = await dbGetByIndex('sessions', 'athleteId', athleteId);
-  const monAll = await dbGetAll('monitoring');
-  const monRegistros = monAll.filter(m => m.athleteId == athleteId);
+  const monRegistros = await dbGetByIndex('monitoring', 'athleteId', athleteId);
 
   sessions.sort((x,y) => y.data.localeCompare(x.data));
   monRegistros.sort((x,y) => y.data.localeCompare(x.data));
