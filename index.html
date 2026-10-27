@@ -5487,9 +5487,13 @@ function drawLineChart(canvasId, labels, datasets, yLabel) {
 
   const allVals = datasets.flatMap(d => d.data.filter(v => v !== null));
   if (!allVals.length) return;
-  const minV = Math.min(...allVals);
-  const maxV = Math.max(...allVals);
-  const range = maxV - minV || 1;
+  // Série constante: abre ±0,5 em volta do valor (linha no meio, eixo real).
+  let minV = Math.min(...allVals);
+  let maxV = Math.max(...allVals);
+  if (maxV === minV) { minV -= 0.5; maxV += 0.5; }
+  const range = maxV - minV;
+  // Casas decimais do eixo conforme a amplitude (evita rótulos repetidos)
+  const casasY = range < 2 ? 2 : 1;
   // Rótulos 'AAAA-MM-DD': eixo X proporcional ao tempo (intervalos sem registro
   // ocupam o espaço real). Outros rótulos: espaçamento uniforme.
   const ehData = labels.length > 0 && labels.every(l => /^\d{4}-\d{2}-\d{2}$/.test(l));
@@ -5506,7 +5510,7 @@ function drawLineChart(canvasId, labels, datasets, yLabel) {
     const y = pad.top + (cH/4)*i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+cW, y); ctx.stroke();
     ctx.fillStyle = '#8a909e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText((maxV-(range/4)*i).toFixed(1), pad.left-5, y+4);
+    ctx.fillText((maxV-(range/4)*i).toFixed(casasY), pad.left-5, y+4);
   }
   ctx.fillStyle = '#8a909e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
   // Rótulos do eixo X sem sobreposição (mín. 44 px entre eles)
@@ -5523,7 +5527,9 @@ function drawLineChart(canvasId, labels, datasets, yLabel) {
     ctx.beginPath();
     let started = false;
     ds.data.forEach((v,i) => {
-      if (v===null) { started=false; return; }
+      // ligarLacunas: medições espaçadas (avaliações) — o null é pulado sem quebrar a linha.
+      // Sem a opção (Monitoramento), dia sem registro continua aparecendo como lacuna.
+      if (v===null) { if (!ds.ligarLacunas) started=false; return; }
       if (!started) { ctx.moveTo(toX(i),toY(v)); started=true; }
       else ctx.lineTo(toX(i),toY(v));
     });
@@ -5625,17 +5631,17 @@ async function renderEvolucaoAvaliacao(athleteId, container) {
 
   container.innerHTML = compHTML +
     makeChart('LSI — Side Hop, SLH e Preensão Palmar (%)', labels,
-      [{data:avs.map(a=>a.side_hop_lsi ?? null),color:'#e0282e'},
-       {data:avs.map(a=>a.slh_lsi ?? null),color:'#00c853'},
-       {data:avs.map(a=>a.grip_lsi ?? null),color:'#60A5FA'}],
+      [{data:avs.map(a=>a.side_hop_lsi ?? null),ligarLacunas:true,color:'#e0282e'},
+       {data:avs.map(a=>a.slh_lsi ?? null),ligarLacunas:true,color:'#00c853'},
+       {data:avs.map(a=>a.grip_lsi ?? null),ligarLacunas:true,color:'#60A5FA'}],
       '%',[{label:'Side Hop LSI',color:'#e0282e'},{label:'SLH LSI',color:'#00c853'},{label:'Grip LSI',color:'#60A5FA'}]) +
     makeChart('Y-Balance Composto D e E (%)', labels,
-      [{data:avs.map(a=>a.ybt_composto_d ?? null),color:'#ffab00'},
-       {data:avs.map(a=>a.ybt_composto_e ?? null),color:'#a78bfa'}],
+      [{data:avs.map(a=>a.ybt_composto_d ?? null),ligarLacunas:true,color:'#ffab00'},
+       {data:avs.map(a=>a.ybt_composto_e ?? null),ligarLacunas:true,color:'#a78bfa'}],
       '%',[{label:'Composto D',color:'#ffab00'},{label:'Composto E',color:'#a78bfa'}]) +
     makeChart('Flexibilidade Isquiossurais (°)', labels,
-      [{data:avs.map(a=>a.isquio_d ?? null),color:'#e0282e'},
-       {data:avs.map(a=>a.isquio_e ?? null),color:'#60A5FA'}],
+      [{data:avs.map(a=>a.isquio_d ?? null),ligarLacunas:true,color:'#e0282e'},
+       {data:avs.map(a=>a.isquio_e ?? null),ligarLacunas:true,color:'#60A5FA'}],
       '°',[{label:'Isquio D',color:'#e0282e'},{label:'Isquio E',color:'#60A5FA'}]);
 }
 
@@ -5649,20 +5655,23 @@ async function renderEvolucaoNutricional(athleteId, container) {
   }
   const labels = avs.map(a => a.data);
 
+  // Uma escala por gráfico: % e kg no mesmo eixo achatavam a curva menor.
+  const serie = (col, color) => ({ data: avs.map(a => a[col] ?? null), color, ligarLacunas: true });
   container.innerHTML =
-    makeChart('Histórico de Peso (kg)', labels,
-      [{data: avs.map(a=>a.peso ?? null), color:'#60A5FA'}],
-      'kg', [{label:'Peso', color:'#60A5FA'}]) +
-    makeChart('% Gordura e Peso Ideal (kg)', labels,
-      [{data: avs.map(a=>a.percentual_gordura ?? null), color:'#e0282e'},
-       {data: avs.map(a=>a.peso_ideal ?? null), color:'#00c853'}],
-      '', [{label:'% Gordura', color:'#e0282e'}, {label:'Peso Ideal (kg)', color:'#00c853'}]) +
-    makeChart('Massa Magra e Massa Gorda (kg)', labels,
-      [{data: avs.map(a=>a.massa_magra ?? null), color:'#60A5FA'},
-       {data: avs.map(a=>a.massa_gorda ?? null), color:'#ffab00'}],
-      'kg', [{label:'Massa Magra', color:'#60A5FA'}, {label:'Massa Gorda', color:'#ffab00'}]) +
+    makeChart('Peso Atual e Peso Ideal (kg)', labels,
+      [serie('peso', '#60A5FA'), serie('peso_ideal', '#00c853')],
+      'kg', [{label:'Peso', color:'#60A5FA'}, {label:'Peso Ideal (kg)', color:'#00c853'}]) +
+    makeChart('% Gordura', labels,
+      [serie('percentual_gordura', '#e0282e')],
+      '%', [{label:'% Gordura', color:'#e0282e'}]) +
+    makeChart('Massa Magra (kg)', labels,
+      [serie('massa_magra', '#60A5FA')],
+      'kg', [{label:'Massa Magra', color:'#60A5FA'}]) +
+    makeChart('Massa Gorda (kg)', labels,
+      [serie('massa_gorda', '#ffab00')],
+      'kg', [{label:'Massa Gorda', color:'#ffab00'}]) +
     makeChart('Soma das Dobras (mm)', labels,
-      [{data: avs.map(a=>a.soma_dobras ?? null), color:'#a78bfa'}],
+      [serie('soma_dobras', '#a78bfa')],
       'mm', [{label:'Soma Dobras', color:'#a78bfa'}]);
 }
 
