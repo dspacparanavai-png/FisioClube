@@ -574,7 +574,8 @@ body.dark-mode #topbar {
     background: var(--cinza-fundo);
     border: 1px solid var(--cinza-borda);
     border-radius: 20px;
-    padding: 32px;
+    --mp: 32px;
+    padding: var(--mp);
     width: 100%;
     max-width: 560px;
     max-height: 90vh;
@@ -635,7 +636,7 @@ body.dark-mode #topbar {
 
   select.form-control option { background: var(--cinza-fundo); }
 
-  .modal-actions {
+  .modal-actions, .modal-footer {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
@@ -643,6 +644,51 @@ body.dark-mode #topbar {
     padding-top: 20px;
     border-top: 1px solid var(--cinza-borda);
   }
+
+  /* Cabeçalho e rodapé fixos dos modais longos (Funcional, Nutricional, Registro Manual) */
+  .modal-header {
+    position: sticky;
+    top: calc(-1 * var(--mp));
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: calc(-1 * var(--mp)) calc(-1 * var(--mp)) 20px;
+    padding: 18px var(--mp);
+    background: var(--cinza-fundo);
+    border-bottom: 1px solid var(--cinza-borda);
+  }
+  .modal-header h3 { margin-bottom: 0; }
+  .modal-close {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 8px;
+    color: var(--cinza-texto);
+    font-size: 15px;
+    line-height: 1;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { color: var(--branco); border-color: var(--acento); }
+  .modal-footer {
+    position: sticky;
+    bottom: calc(-1 * var(--mp));
+    z-index: 5;
+    margin: 24px calc(-1 * var(--mp)) calc(-1 * var(--mp));
+    padding: 16px var(--mp);
+    background: var(--cinza-fundo);
+  }
+
+  /* Y-Balance: T1, T2 e T3 na mesma linha */
+  .form-row.trio { grid-template-columns: repeat(3, 1fr); }
 
   /* -- PHOTO UPLOAD -- */
   .photo-upload-area {
@@ -958,10 +1004,17 @@ body.dark-mode #topbar {
     #topbar { padding: 12px 16px 12px 56px; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     #sb-bar { left: 0; }
-    .modal { max-width: 100% !important; margin: 0; border-radius: 16px 16px 0 0; max-height: 90vh; }
-    .modal-overlay { align-items: flex-end; }
-    .form-row { flex-direction: column; }
-    .form-row .form-group { width: 100%; }
+    .modal { max-width: 100% !important; margin: 0; border-radius: 16px 16px 0 0; max-height: 90vh; --mp: 18px; }
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    /* Formulários: 1 coluna; pares só de números (D/E, T1/T2) seguem lado a lado */
+    .form-row { grid-template-columns: 1fr; }
+    .form-row:not(.trio):not(:has(select, textarea, input:not([type="number"]))) { grid-template-columns: 1fr 1fr; }
+    .g-2cel { grid-template-columns: repeat(2, 1fr) !important; }
+    .g-1cel { grid-template-columns: 1fr !important; }
+    .modal-header h3 { font-size: 20px; letter-spacing: 1px; }
+    /* Barra superior: título em cima, categoria e tema embaixo */
+    #topbar { flex-wrap: wrap; row-gap: 8px; }
+    #topbar h2 { font-size: 20px; }
     .today-athlete-row { flex-wrap: wrap; }
     .cat-selector { font-size: 11px; }
     .cat-btn { padding: 5px 10px; font-size: 11px; }
@@ -1024,7 +1077,7 @@ body.dark-mode #topbar {
       <span class="icon">📋</span> Histórico Geral
     </button>
     <button class="nav-item" onclick="showSection('monitoramento')">
-      <span class="icon">📊</span> Monitoramento
+      <span class="icon">💓</span> Monitoramento
     </button>
     <button class="nav-item" onclick="showSection('avaliacao')">
       <span class="icon">🏃</span> Aval. Funcional
@@ -1036,7 +1089,7 @@ body.dark-mode #topbar {
       <span class="icon">📈</span> Evolução
     </button>
     <button class="nav-item" onclick="showSection('fisios')">
-      <span class="icon">👥</span> Comissão Técnica
+      <span class="icon">🩺</span> Comissão Técnica
     </button>
 
   </nav>
@@ -1070,18 +1123,10 @@ body.dark-mode #topbar {
 
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
-      
 
-<div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:16px;padding:24px;">
-        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:16px;">⚡ Ações Rápidas</h3>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="showSection('hoje')">Registrar Atendimento</button>
-          <button class="btn btn-ghost" onclick="showSection('atletas')">Ver Todos os Atletas</button>
-          <button class="btn btn-ghost" onclick="openAthleteModal()">+ Cadastrar Atleta</button>
-        </div>
-      </div>
+      <div id="dashboard-alertas" style="margin-bottom:24px;"></div>
 
-<div class="stats-grid">
+      <div class="stats-grid">
         <div class="stat-card verde">
           <div class="stat-label">Ativos</div>
           <div class="stat-value" id="stat-ativos">0</div>
@@ -1093,9 +1138,9 @@ body.dark-mode #topbar {
           <div class="stat-sub">Em recuperação</div>
         </div>
         <div class="stat-card azul">
-          <div class="stat-label">Total Atendimentos</div>
+          <div class="stat-label">Atendimentos</div>
           <div class="stat-value" id="stat-total-atend">0</div>
-          <div class="stat-sub">Sessões registradas</div>
+          <div class="stat-sub">Últimos 7 dias</div>
         </div>
         <div class="stat-card cinza">
           <div class="stat-label">Atletas Cadastrados</div>
@@ -1109,9 +1154,15 @@ body.dark-mode #topbar {
         <div id="today-list"></div>
       </div>
 
-      <div id="dashboard-alertas" style="margin-top:20px;"></div>
+      <div style="background:var(--cinza-card);border:1px solid var(--cinza-borda);border-radius:16px;padding:20px 24px;">
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:14px;">⚡ Ações Rápidas</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="showSection('hoje')">Registrar Atendimento</button>
+          <button class="btn btn-ghost" onclick="showSection('atletas')">Ver Todos os Atletas</button>
+          <button class="btn btn-ghost" onclick="openAthleteModal()">+ Cadastrar Atleta</button>
+        </div>
+      </div>
 
-      
     </div>
 
     <!-- ATLETAS LIST -->
@@ -1257,7 +1308,7 @@ body.dark-mode #topbar {
     </div>
 
     <!-- Dados do atleta (preenchidos automaticamente) -->
-    <div style="background:var(--cinza-fundo);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;" id="av-dados-atleta">
+    <div class="g-2cel" style="background:var(--cinza-fundo);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;" id="av-dados-atleta">
       <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Peso</div><div id="av-info-peso" style="font-weight:600;">—</div></div>
       <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Altura</div><div id="av-info-altura" style="font-weight:600;">—</div></div>
       <div><div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;">Idade</div><div id="av-info-idade" style="font-weight:600;">—</div></div>
@@ -1287,7 +1338,7 @@ body.dark-mode #topbar {
 
     <!-- 4. Thomas Modificado -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Thomas Modificado (°)</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
       <div class="form-group"><label style="font-size:11px;">Iliopsoas D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-d"></div>
       <div class="form-group"><label style="font-size:11px;">Reto Femoral D (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-reto-d"></div>
       <div class="form-group"><label style="font-size:11px;">Iliopsoas E (°)</label><input type="number" step="0.1" class="form-control" id="av-thomas-ilio-e"></div>
@@ -1296,7 +1347,7 @@ body.dark-mode #topbar {
 
     <!-- 5. Preensão Palmar -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">✊ Preensão Palmar — 3 tentativas intercaladas (kgf)</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
       <div class="form-group"><label style="font-size:10px;">D1 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-d1" oninput="avCalcBest('grip','d','max')"></div>
       <div class="form-group"><label style="font-size:10px;">E1 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-e1" oninput="avCalcBest('grip','e','max')"></div>
       <div class="form-group"><label style="font-size:10px;">D2 (kgf)</label><input type="number" step="0.1" class="form-control" id="av-grip-d2" oninput="avCalcBest('grip','d','max')"></div>
@@ -1319,7 +1370,7 @@ body.dark-mode #topbar {
 
     <!-- 7. Single Leg Hop -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦘 Single Leg Hop Test — 3 tentativas intercaladas (m) — maior distância = melhor</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
       <div class="form-group"><label style="font-size:10px;">D1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d1" oninput="avCalcBest('slh','d','max')"></div>
       <div class="form-group"><label style="font-size:10px;">E1 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-e1" oninput="avCalcBest('slh','e','max')"></div>
       <div class="form-group"><label style="font-size:10px;">D2 (m)</label><input type="number" step="0.01" class="form-control" id="av-slh-d2" oninput="avCalcBest('slh','d','max')"></div>
@@ -1335,7 +1386,7 @@ body.dark-mode #topbar {
 
     <!-- 8. Side Hop Test -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⏱️ Side Hop Test — 3 tentativas intercaladas (s) — menor tempo = melhor</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:6px;">
       <div class="form-group"><label style="font-size:10px;">D1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d1" oninput="avCalcBest('sh','d','min')"></div>
       <div class="form-group"><label style="font-size:10px;">E1 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-e1" oninput="avCalcBest('sh','e','min')"></div>
       <div class="form-group"><label style="font-size:10px;">D2 (s)</label><input type="number" step="0.01" class="form-control" id="av-sh-d2" oninput="avCalcBest('sh','d','min')"></div>
@@ -1351,23 +1402,23 @@ body.dark-mode #topbar {
 
     <!-- 9. Y-Balance Test -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">⭐ Y-Balance Test — 3 tentativas por direção (cm)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">
+    <div class="g-1cel" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--cinza-texto);margin-bottom:8px;">Direito</div>
         <div style="font-size:11px;color:var(--cinza-texto);margin-bottom:4px;">Anterior</div>
-        <div class="form-row">
+        <div class="form-row trio">
           <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-ybt-ant-d1" oninput="avCalcYBT('d')"></div>
           <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-ybt-ant-d2" oninput="avCalcYBT('d')"></div>
           <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-ybt-ant-d3" oninput="avCalcYBT('d')"></div>
         </div>
         <div style="font-size:11px;color:var(--cinza-texto);margin-bottom:4px;">Posteromedial</div>
-        <div class="form-row">
+        <div class="form-row trio">
           <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-ybt-pm-d1" oninput="avCalcYBT('d')"></div>
           <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-ybt-pm-d2" oninput="avCalcYBT('d')"></div>
           <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-ybt-pm-d3" oninput="avCalcYBT('d')"></div>
         </div>
         <div style="font-size:11px;color:var(--cinza-texto);margin-bottom:4px;">Posterolateral</div>
-        <div class="form-row">
+        <div class="form-row trio">
           <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-ybt-pl-d1" oninput="avCalcYBT('d')"></div>
           <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-ybt-pl-d2" oninput="avCalcYBT('d')"></div>
           <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-ybt-pl-d3" oninput="avCalcYBT('d')"></div>
@@ -1377,19 +1428,19 @@ body.dark-mode #topbar {
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--cinza-texto);margin-bottom:8px;">Esquerdo</div>
         <div style="font-size:11px;color:var(--cinza-texto);margin-bottom:4px;">Anterior</div>
-        <div class="form-row">
+        <div class="form-row trio">
           <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-ybt-ant-e1" oninput="avCalcYBT('e')"></div>
           <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-ybt-ant-e2" oninput="avCalcYBT('e')"></div>
           <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-ybt-ant-e3" oninput="avCalcYBT('e')"></div>
         </div>
         <div style="font-size:11px;color:var(--cinza-texto);margin-bottom:4px;">Posteromedial</div>
-        <div class="form-row">
+        <div class="form-row trio">
           <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-ybt-pm-e1" oninput="avCalcYBT('e')"></div>
           <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-ybt-pm-e2" oninput="avCalcYBT('e')"></div>
           <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-ybt-pm-e3" oninput="avCalcYBT('e')"></div>
         </div>
         <div style="font-size:11px;color:var(--cinza-texto);margin-bottom:4px;">Posterolateral</div>
-        <div class="form-row">
+        <div class="form-row trio">
           <div class="form-group"><label>T1</label><input type="number" step="0.1" class="form-control" id="av-ybt-pl-e1" oninput="avCalcYBT('e')"></div>
           <div class="form-group"><label>T2</label><input type="number" step="0.1" class="form-control" id="av-ybt-pl-e2" oninput="avCalcYBT('e')"></div>
           <div class="form-group"><label>T3</label><input type="number" step="0.1" class="form-control" id="av-ybt-pl-e3" oninput="avCalcYBT('e')"></div>
@@ -1935,7 +1986,7 @@ body.dark-mode #topbar {
     </div>
 
     <!-- Dados do atleta -->
-    <div style="background:var(--cinza-fundo);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+    <div class="g-2cel" style="background:var(--cinza-fundo);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
       <div>
         <div style="font-size:10px;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Peso atual (kg)</div>
         <input type="number" step="0.1" class="form-control" id="nut-peso-atual" placeholder="Ex: 80.5" oninput="nutCalc()" style="padding:4px 8px;font-size:13px;">
@@ -1968,7 +2019,7 @@ body.dark-mode #topbar {
 
     <!-- Dobras cutâneas -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📏 Dobras Cutâneas (mm)</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
       <div class="form-group"><label style="font-size:11px;">Tríceps</label><input type="number" step="0.1" class="form-control" id="nut-triceps" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Subescapular</label><input type="number" step="0.1" class="form-control" id="nut-subescapular" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Axilar Média</label><input type="number" step="0.1" class="form-control" id="nut-axilar" oninput="nutCalc()"></div>
@@ -2006,7 +2057,7 @@ body.dark-mode #topbar {
 
     <!-- Circunferências -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">📐 Circunferências (cm)</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
       <div class="form-group"><label style="font-size:11px;">Pescoço</label><input type="number" step="0.1" class="form-control" id="nut-pescoco"></div>
       <div class="form-group"><label style="font-size:11px;">Tórax</label><input type="number" step="0.1" class="form-control" id="nut-torax"></div>
       <div class="form-group"><label style="font-size:11px;">Peitoral</label><input type="number" step="0.1" class="form-control" id="nut-circ-peitoral"></div>
@@ -2026,7 +2077,7 @@ body.dark-mode #topbar {
 
     <!-- Diâmetros ósseos -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--acento);margin-bottom:10px;">🦴 Diâmetros Ósseos (cm)</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+    <div class="g-2cel" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
       <div class="form-group"><label style="font-size:11px;">Úmero D</label><input type="number" step="0.01" class="form-control" id="nut-umero-d" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Punho D</label><input type="number" step="0.01" class="form-control" id="nut-punho-d" oninput="nutCalc()"></div>
       <div class="form-group"><label style="font-size:11px;">Fêmur D</label><input type="number" step="0.01" class="form-control" id="nut-femur-d" oninput="nutCalc()"></div>
@@ -2379,7 +2430,11 @@ async function renderDashboard() {
 
   document.getElementById('stat-ativos').textContent = ativos;
   document.getElementById('stat-afastados').textContent = afastados;
-  document.getElementById('stat-total-atend').textContent = sessions.length;
+  // Atendimentos dos últimos 7 dias (hoje incluso), em data local
+  const d7 = new Date(hojeLocal() + 'T12:00:00');
+  d7.setDate(d7.getDate() - 6);
+  const inicio7 = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}`;
+  document.getElementById('stat-total-atend').textContent = sessions.filter(s => s.data >= inicio7 && s.data <= hojeLocal()).length;
   document.getElementById('stat-total-atletas').textContent = athletes.length;
 
   const today = hojeLocal();
