@@ -3311,19 +3311,29 @@ async function saveSession() {
   }
 }
 
-function openEditSession(id, data, evolucao) {
+async function openEditSession(id, data, evolucao) {
   editingSessionId = id;
   document.getElementById('es-id').value = id;
   document.getElementById('es-data').value = data;
   document.getElementById('es-evolucao').value = evolucao;
+  // Profissional do atendimento já pré-selecionado
+  const s = await dbGet('sessions', id);
+  await loadPhysiosSelect('es-physio', s?.physioId ?? null, s?.physioNome || '');
   openModal('modal-edit-sessao');
 }
 
 async function updateSession() {
   const id = editingSessionId;
   const s = await dbGet('sessions', id);
+  if (!s) { falhaGravacao(ERRO_SEM_LINHAS); return; }
   s.data = document.getElementById('es-data').value;
   s.evolucao = document.getElementById('es-evolucao').value.trim();
+  if (!s.data) { showToast('Selecione a data!'); return; }
+  if (!s.evolucao) { showToast('Preencha a evolução!'); return; }
+  // physioId é bigint: sem profissional = null
+  const sel = document.getElementById('es-physio');
+  s.physioId = numOuNull(sel?.value);
+  s.physioNome = s.physioId !== null ? (sel.selectedOptions[0]?.dataset.nome || '') : '';
   if (!(await dbPut('sessions', s))) return;
   closeModal('modal-edit-sessao');
   showToast('Atendimento atualizado!');
@@ -3597,20 +3607,29 @@ async function deletePhysio(id){
   loadPhysiosSelect();
 }
 
-async function loadPhysiosSelect(){
+// Preenche um seletor de profissionais (padrão: modal Registrar Atendimento).
+// selecionadoId/nomeAtual: usados na edição. Se o profissional do atendimento
+// foi excluído da Comissão, ele continua como opção para não se perder.
+async function loadPhysiosSelect(selId = 'a-physio', selecionadoId = null, nomeAtual = ''){
   const fisios = await dbGetAll('physios');
-  const sel = document.getElementById('a-physio');
+  const sel = document.getElementById(selId);
   if(!sel) return;
   const tipoSuffix = {
     fisioterapeuta: '', profissional: '',
     nutricionista: ' (Nutr.)', preparador: ' (Prep.)',
     medico: ' (Méd.)', estagiario: ' (Est.)', outro: ''
   };
-  sel.innerHTML = '<option value="">Selecione...</option>' +
+  const idSel = numOuNull(selecionadoId);
+  let extra = '';
+  if (idSel !== null && !fisios.some(f => Number(f.id) === idSel)) {
+    extra = `<option value="${idSel}" data-nome="${escapeHtml(nomeAtual)}">${escapeHtml(nomeAtual || 'Profissional removido')} (fora da comissão)</option>`;
+  }
+  sel.innerHTML = '<option value="">Selecione...</option>' + extra +
     fisios.map(f => {
       const suffix = tipoSuffix[f.tipo] || '';
-      return `<option value="${f.id}">${f.nome}${suffix}</option>`;
+      return `<option value="${f.id}" data-nome="${escapeHtml(f.nome)}">${escapeHtml(f.nome)}${suffix}</option>`;
     }).join('');
+  sel.value = idSel !== null ? String(idSel) : '';
 }
 
 const _openSessionModal = openSessionModal;
