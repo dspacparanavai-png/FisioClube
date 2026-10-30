@@ -3273,10 +3273,11 @@ async function saveSession() {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
 
   try {
-    const physioId = document.getElementById('a-physio')?.value || '';
+    // physioId é bigint no banco: sem fisio selecionado vai null (não '')
+    const physioId = numOuNull(document.getElementById('a-physio')?.value);
     let physioNome = '';
-    if (physioId) {
-      const p = await dbGet('physios', Number(physioId));
+    if (physioId !== null) {
+      const p = await dbGet('physios', physioId);
       if (p) physioNome = p.nome;
     }
 
